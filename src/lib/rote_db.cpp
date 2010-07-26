@@ -52,20 +52,40 @@ void rote_db::_exec(const std::string& sql) const {
 }
 
 std::string rote_db::_get_val(const std::string& sql) const {
-  return _get_rows(sql)[0].begin()->second;
+  const string_v vs;
+  return _get_val(sql, vs);
+}
+
+std::string rote_db::_get_val(const std::string& sql, const string_v& vs) const {
+  return _get_rows(sql, vs)[0].begin()->second;
 }
 
 int rote_db::_get_int(const std::string& sql) const {
-  return _str_to_int(_get_val(sql));
+  const string_v vs;
+  return _get_int(sql, vs);
 }
 
-rubix::row rote_db::_get_row(const std::string& sql) const {
-  return _get_rows(sql)[0];
+int rote_db::_get_int(const std::string& sql, const string_v& vs) const {
+  return _str_to_int(_get_val(sql, vs));
 }
 
-rubix::string_v rote_db::_get_col(const std::string& sql) const {
+row rote_db::_get_row(const std::string& sql) const {
+  const string_v vs;
+  return _get_row(sql, vs);
+}
+
+row rote_db::_get_row(const std::string& sql, const string_v& vs) const {
+  return _get_rows(sql, vs)[0];
+}
+
+string_v rote_db::_get_col(const std::string& sql) const {
+  const string_v vs;
+  return _get_col(sql, vs);
+}
+
+string_v rote_db::_get_col(const std::string& sql, const string_v& vs) const {
   string_v ret;
-  rubix::rows rows = _get_rows(sql);
+  rubix::rows rows = _get_rows(sql, vs);
   for (rubix::rows::const_iterator it = rows.begin(); it != rows.end(); ++it) {
     const row& row = *it;
     ret.push_back(row.begin()->second);
@@ -73,42 +93,13 @@ rubix::string_v rote_db::_get_col(const std::string& sql) const {
   return ret;
 }
 
-rubix::rows rote_db::_get_rows(const std::string& sql) const {
-  char **result;
-  int num_rows    = 0;
-  int num_columns = 0;
-  char *err_msg   = 0;
-  rows results;
+rows rote_db::_get_rows(const std::string& sql) const {
+  const string_v vs;
+  return _get_rows(sql, vs);
+}
 
-  if (sqlite3_get_table(__db,
-                        sql.c_str(),
-                        &result,
-                        &num_rows,
-                        &num_columns,
-                        &err_msg) != SQLITE_OK) {
-    std::stringstream ss;
-    ss << "SQL error: " << err_msg;
-    sqlite3_free(err_msg);
-    sqlite3_free_table(result);
-    throw std::runtime_error(ss.str());
-  }
-
-  for (int i = 0; i < num_rows; ++i) {
-    row row;
-    for (int j = 0; j < num_columns; ++j) {
-      char* value = result[num_columns+(num_columns*i)+j];
-      if (!value) {
-        throw std::runtime_error("invalid index");
-      }
-      row[result[j]] = value;
-    }
-    results.push_back(row);
-  }
-
-  sqlite3_free(err_msg);
-  sqlite3_free_table(result);
-
-  return results;
+rows rote_db::_get_rows(const std::string& sql, const string_v& vs) const {
+  return _exec_prepared(sql, vs);
 }
 
 std::string rote_db::_join(const string_v& s, const std::string& glue) const {
@@ -122,7 +113,7 @@ std::string rote_db::_join(const string_v& s, const std::string& glue) const {
   return ret;
 }
 
-std::string rote_db::_exec_prepared(const std::string& sql,
+rows rote_db::_exec_prepared(const std::string& sql,
                              const string_v& vs) const {
   sqlite3_stmt *stmt;
   if (sqlite3_prepare_v2(__db, sql.c_str(), -1, &stmt, NULL) != SQLITE_OK) {
@@ -144,12 +135,23 @@ std::string rote_db::_exec_prepared(const std::string& sql,
     }
   }
 
-  std::string ret;
+  rows ret;
 
-  if (sqlite3_step(stmt) == SQLITE_ROW) {
-    ret = (const char*)sqlite3_column_text(stmt, 0);
-  } else if (sqlite3_step(stmt) != SQLITE_DONE) {
-      throw std::runtime_error("could not execute statement");
+  int num_columns = sqlite3_column_count(stmt);
+  int rc = sqlite3_step(stmt);
+  while (rc == SQLITE_ROW) {
+    rubix::row row;
+    for (int i = 0; i < num_columns; ++i) {
+      row[sqlite3_column_name(stmt, i)] = (const char*)sqlite3_column_text(stmt, i);
+    }
+    ret.push_back(row);
+    rc = sqlite3_step(stmt);
+  }
+
+  if (rc != SQLITE_DONE) {
+    std::stringstream ss;
+    ss << "could not execute statement: " << sqlite3_errmsg(__db) << " (" << rc << ")";
+    throw std::runtime_error(ss.str());
   }
 
   return ret;
@@ -181,7 +183,13 @@ std::string rote_db::_insert(const std::string& table,
     sql += " RETURNING "+ret;
   }
 
-  return _exec_prepared(sql, vs);
+  rubix::rows rows = _exec_prepared(sql, vs);
+
+  if (!ret.empty()) {
+    return rows[0].begin()->second;
+  }
+
+  return "";
 }
 
 void rote_db::_update(const std::string& table,
@@ -342,43 +350,47 @@ tags rote_db::list_tags() const {
   return ret;
 }
 
-notes rote_db::list_notes() const {
-  return list_notes(CREATION_DESC);
-}
-
 notes rote_db::list_notes(const sort& value) const {
-  return search("", value);
+  string_v conditions;
+  return search(conditions, value);
 }
 
-notes rote_db::search(const std::string& condition, const sort& value) const {
+std::string rote_db::_order_by(const sort& value) const {
+  std::string ret;
+  ret = "  ORDER BY ";
+  switch (value) {
+    case CREATION:
+      ret += "CREATED";
+      break;
+    case CREATION_DESC:
+      ret += "CREATED DESC";
+      break;
+    case MODIFIED:
+      ret += "MODIFIED";
+      break;
+    case MODIFIED_DESC:
+      ret += "MODIFIED DESC";
+      break;
+  }
+  return ret;
+}
+
+notes rote_db::search(const string_v& conditions, const sort& value) const {
   std::string sql;
   sql  = "SELECT *";
   sql += "  FROM note";
-  if (!condition.empty()) {
-    sql += "  WHERE LOWER(note) LIKE ?";
+  if (!conditions.empty()) {
+    sql += "  WHERE LOWER(note) LIKE LOWER(?)";
   }
-  sql += "  ORDER BY ";
-  switch (value) {
-    case CREATION:
-      sql += "CREATED";
-      break;
-    case CREATION_DESC:
-      sql += "CREATED DESC";
-      break;
-    case MODIFIED:
-      sql += "MODIFIED";
-      break;
-    case MODIFIED_DESC:
-      sql += "MODIFIED DESC";
-      break;
-  }
+  sql += _order_by(value);
+
   rubix::rows rows;
-  if (condition.empty()) {
-    rows = _get_rows(sql);
+  if (!conditions.empty()) {
+    rows = _get_rows(sql, conditions);
   } else {
-    // TODO(jrubin)
-    // rows = _get_rows(sql, conditions);
+    rows = _get_rows(sql);
   }
+
   notes ret;
   for (rubix::rows::const_iterator it = rows.begin(); it != rows.end(); ++it) {
     const row& row = *it;
@@ -387,9 +399,27 @@ notes rote_db::search(const std::string& condition, const sort& value) const {
   return ret;
 }
 
-notes rote_db::by_tag(const std::string& value) const {
+notes rote_db::by_tag(const std::string& tag, const sort& value) const {
+  std::string sql;
+  sql  = "SELECT *";
+  sql += "  FROM note";
+  sql += "  WHERE note_id IN (";
+  sql += "    SELECT note_id";
+  sql += "      FROM notes_tags";
+  sql += "      WHERE LOWER(tag) = LOWER(?)";
+  sql += "  )";
+  sql += _order_by(value);
+
+  rubix::rows rows;
+  string_v conditions;
+  conditions.push_back(tag);
+  rows = _get_rows(sql, conditions);
+
   notes ret;
-  // TODO(jrubin)
+  for (rubix::rows::const_iterator it = rows.begin(); it != rows.end(); ++it) {
+    const row& row = *it;
+    ret.push_back(note(row));
+  }
   return ret;
 }
 };
