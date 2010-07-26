@@ -273,9 +273,7 @@ void rote_db::_init_db() const {
   _exec(sql.str());
 
   row values;
-  std::stringstream schema_version;
-  schema_version << SCHEMA_VERSION;
-  values["version"] = schema_version.str();
+  values["version"] = _int_to_str(SCHEMA_VERSION);
   _insert("schema_version", values);
 }
 
@@ -292,6 +290,12 @@ void rote_db::_upgrade_db() const {
     default:
       throw std::runtime_error("unknown schema version");
   }
+}
+
+std::string rote_db::_int_to_str(const int& value) const {
+  std::stringstream ss;
+  ss << value;
+  return ss.str();
 }
 
 int rote_db::_str_to_int(const std::string& value) const {
@@ -328,7 +332,7 @@ int rote_db::_insert_note(note *value) const {
   values["modified"] = boost::gregorian::to_simple_string(value->modified());
   const int id = _str_to_int(_insert("notes", values, "note_id"));
   value->id(id);
-  return id;
+  return _save_tags(value);
 }
 
 int rote_db::_update_note(const note *value) const {
@@ -337,7 +341,43 @@ int rote_db::_update_note(const note *value) const {
   values["modified"] = boost::gregorian::to_simple_string(value->modified());
   conditions["note_id"] = value->id();
   _update("notes", values, conditions);
+  return _save_tags(value);
+}
+
+int rote_db::_save_tags(const note *value) const {
+  row conditions;
+  conditions["note_id"] = _int_to_str(value->id());
+  _delete("notes_tags", conditions);
+
+  std::string sql;
+  sql = "DELETE FROM tags WHERE tag NOT IN (SELECT tag FROM notes_tags)";
+  _exec(sql);
+
+  tags t = value->tags();
+  for (tags::const_iterator it = t.begin(); it != t.end(); ++it) {
+    const std::string& tag = *it;
+    _save_tag(tag, value);
+  }
   return value->id();
+}
+
+void rote_db::_save_tag(const std::string& tag, const note *value) const {
+  std::string sql;
+  string_v conditions;
+
+  sql  = "INSERT INTO tags (tag) VALUES(?)";
+  conditions.push_back(tag);
+  sql += "  WHERE NOT EXISTS(";
+  sql += "    SELECT * FROM tags WHERE tag = ?";
+  conditions.push_back(tag);
+  sql += "  )";
+
+  _exec_prepared(sql, conditions);
+
+  row values;
+  values["note_id"] = _int_to_str(value->id());
+  values["tag"]     = tag;
+  _insert("notes_tags", values);
 }
 
 tags rote_db::list_tags() const {

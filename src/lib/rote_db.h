@@ -39,8 +39,10 @@ class rote_db {
                                const row&,
                                const row&) const;
     void               _delete(const std::string&, const row&) const;
+    void               _save_tag(const std::string&, const note* value) const;
     int                _insert_note(note* value) const;
     int                _update_note(const note*) const;
+    int                _save_tags(const note*) const;
     int                _str_to_int(const std::string&) const;
     int                _get_int(const std::string&) const;
     int                _get_int(const std::string&, const string_v&) const;
@@ -52,6 +54,7 @@ class rote_db {
     string_v           _get_col(const std::string&, const string_v&) const;
     rows               _exec_prepared(const std::string&,
                                       const string_v&) const;
+    std::string        _int_to_str(const int&) const;
     std::string        _insert(const std::string&,
                                const row&,
                                const std::string&) const;
