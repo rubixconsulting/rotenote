@@ -15,27 +15,18 @@ namespace rubix {
 
 class rote_db {
   public:
-    // typedef
-    // typedef std::vector<note>        notes;
-    // typedef std::vector<location>    locations;
-    // typedef std::vector<std::string> tags;
-
     // constructors
     rote_db();
     ~rote_db();
 
     // methods
-    // bool      saveNote(note*)
-    // tags      listTags()
-    // notes     listNotes();
-    // notes     listNotes(sort)
-    // notes     byText(string)
-    // notes     byLocation(location)
-    // notes     byTag(tag)
-    // notes     byCreation(datetime)
-    // notes     byModified(datetime)
-    // notes     byTitle(string)
-    // locations listLocations()
+    // bool                     saveNote(note*)
+    // std::vector<std::string> listTags()
+    // std::vector<note>        listNotes();
+    // std::vector<note>        listNotes(sort)
+    // std::vector<note>        search(string)
+    // std::vector<note>        byTag(tag)
+
   private:
     // typedefs
     typedef std::map<const std::string, std::string> _row_;
