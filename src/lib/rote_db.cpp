@@ -280,26 +280,37 @@ const std::string& rote_db::_db_filename(const std::string& value) {
 
 bool rote_db::save_note(const note *value) const {
   // TODO(jrubin)
+  return false;
 }
 
-std::vector<std::string> rote_db::list_tags() const {
+std::set<std::string> rote_db::list_tags() const {
+  std::set<std::string> ret;
   // TODO(jrubin)
+  return ret;
 }
 
 std::vector<note> rote_db::list_notes() const {
+  std::vector<note> ret;
   // TODO(jrubin)
+  return ret;
 }
 
 std::vector<note> rote_db::list_notes(const sort& value) const {
+  std::vector<note> ret;
   // TODO(jrubin)
+  return ret;
 }
 
 std::vector<note> rote_db::search(const std::string& value) const {
+  std::vector<note> ret;
   // TODO(jrubin)
+  return ret;
 }
 
 std::vector<note> rote_db::by_tag(const std::string& value) const {
+  std::vector<note> ret;
   // TODO(jrubin)
+  return ret;
 }
 };
 

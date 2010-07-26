@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
 
 namespace rubix {
 
@@ -29,12 +30,12 @@ class rote_db {
     ~rote_db();
 
     // methods
-    bool                     save_note(const note*) const;
-    std::vector<std::string> list_tags() const;
-    std::vector<note>        list_notes() const;
-    std::vector<note>        list_notes(const sort&) const;
-    std::vector<note>        search(const std::string&) const;
-    std::vector<note>        by_tag(const std::string&) const;
+    bool                  save_note(const note*) const;
+    std::vector<note>     list_notes() const;
+    std::vector<note>     list_notes(const sort&) const;
+    std::vector<note>     search(const std::string&) const;
+    std::vector<note>     by_tag(const std::string&) const;
+    std::set<std::string> list_tags() const;
 
   private:
     // typedefs
