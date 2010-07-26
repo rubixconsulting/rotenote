@@ -1,20 +1,31 @@
 // Copyright 2010 Rubix Consulting, Inc.
 
 #include "./rote_db.h"
-#include <stdlib.h>
 #include <stdexcept>
 #include <sstream>
 #include <string>
 
 namespace rubix {
-rote_db::rote_db() {
-  if (!sqlite3_open_v2(_db_filename().c_str(),
+rote_db::rote_db(const std::string& dbfile) {
+  _init(dbfile);
+}
+
+void rote_db::_init(const std::string& value) {
+  __db = 0;
+
+  if (value.empty()) {
+    throw std::invalid_argument("missing database filename");
+  }
+
+  _db_filename(value);
+
+  if (!sqlite3_open_v2(value.c_str(),
                        &__db,
                        SQLITE_OPEN_READWRITE,
                        NULL)) {
     _upgrade_db();
     return;
-  } else if (!sqlite3_open_v2(_db_filename().c_str(),
+  } else if (!sqlite3_open_v2(value.c_str(),
                               &__db,
                               SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
                               NULL)) {
@@ -22,7 +33,7 @@ rote_db::rote_db() {
     return;
   }
 
-  throw std::runtime_error("could not open database: "+_db_filename());
+  throw std::runtime_error("could not open database: "+value);
 }
 
 rote_db::~rote_db() {
@@ -255,14 +266,12 @@ int rote_db::_str_to_int(const std::string& value) {
 }
 
 const std::string& rote_db::_db_filename() {
-  if (!__db_filename.empty()) {
-    return __db_filename;
-  }
-  char *home = getenv("HOME");
-  std::stringstream ss;
-  ss << home << "/." << DB_NAME;
-  __db_filename = ss.str();
   return __db_filename;
+}
+
+const std::string& rote_db::_db_filename(const std::string& value) {
+  __db_filename = value;
+  return _db_filename();
 }
 };
 

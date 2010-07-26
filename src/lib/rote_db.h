@@ -10,13 +10,12 @@
 
 namespace rubix {
 
-#define DB_NAME        "rotedb"
 #define SCHEMA_VERSION 1
 
 class rote_db {
   public:
     // constructors
-    rote_db();
+    rote_db(const std::string&);
     ~rote_db();
 
     // methods
@@ -39,6 +38,7 @@ class rote_db {
     std::string __db_filename;
 
     // methods
+    void               _init(const std::string&);
     void               _init_db();
     void               _upgrade_db();
     void               _exec(const std::string&);
@@ -54,6 +54,7 @@ class rote_db {
     std::string        _join(const _string_v_&, const std::string&);
     std::string        _make_qs(const _row_&, _string_v_*);
     const std::string& _db_filename();
+    const std::string& _db_filename(const std::string&);
 };
 };
 
