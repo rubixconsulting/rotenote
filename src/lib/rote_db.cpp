@@ -80,7 +80,6 @@ void rote_db::_init_db() {
   sql.str("");
   sql << "CREATE TABLE notes (";
   sql << "  note_id  INTEGER NOT NULL PRIMARY KEY,";
-  sql << "  title    TEXT    NOT NULL DEFAULT '',";
   sql << "  note     TEXT    NOT NULL DEFAULT '',";
   sql << "  created  TEXT    NOT NULL DEFAULT (datetime('now')),";
   sql << "  modified TEXT    NOT NULL DEFAULT (datetime('now'))";
