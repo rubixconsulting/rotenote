@@ -18,7 +18,9 @@ class rote_db {
     ~rote_db();
 
     // methods
+    void  delete_note(note* value) const;
     int   save_note(note* value) const;
+    int   num_notes() const;
     tags  list_tags() const;
     notes list_notes(const sort&) const;
     notes search(const string_v&, const sort&) const;
@@ -34,12 +36,12 @@ class rote_db {
     void               _init_db() const;
     void               _upgrade_db() const;
     void               _exec(const std::string&) const;
-    void               _insert(const std::string&, const row&) const;
     void               _update(const std::string&,
                                const row&,
                                const row&) const;
     void               _delete(const std::string&, const row&) const;
     void               _save_tag(const std::string&, const note* value) const;
+    int                _insert(const std::string&, const row&) const;
     int                _insert_note(note* value) const;
     int                _update_note(const note*) const;
     int                _save_tags(const note*) const;
@@ -55,9 +57,6 @@ class rote_db {
     rows               _exec_prepared(const std::string&,
                                       const string_v&) const;
     std::string        _int_to_str(const int&) const;
-    std::string        _insert(const std::string&,
-                               const row&,
-                               const std::string&) const;
     std::string        _get_val(const std::string&) const;
     std::string        _get_val(const std::string&, const string_v&) const;
     std::string        _join(const string_v&, const std::string&) const;

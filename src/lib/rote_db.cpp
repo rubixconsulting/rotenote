@@ -116,9 +116,10 @@ std::string rote_db::_join(const string_v& s, const std::string& glue) const {
 rows rote_db::_exec_prepared(const std::string& sql,
                              const string_v& vs) const {
   sqlite3_stmt *stmt;
-  if (sqlite3_prepare_v2(__db, sql.c_str(), -1, &stmt, NULL) != SQLITE_OK) {
+  int rc = sqlite3_prepare_v2(__db, sql.c_str(), -1, &stmt, NULL);
+  if (rc != SQLITE_OK) {
     std::stringstream ss;
-    ss << "could not prepare statement: " << sql;
+    ss << "could not prepare statement \""<< sql << "\" " << sqlite3_errmsg(__db) << " (" << rc << ")";
     throw std::runtime_error(ss.str());
   }
 
@@ -138,7 +139,7 @@ rows rote_db::_exec_prepared(const std::string& sql,
   rows ret;
 
   int num_columns = sqlite3_column_count(stmt);
-  int rc = sqlite3_step(stmt);
+  rc = sqlite3_step(stmt);
   while (rc == SQLITE_ROW) {
     rubix::row row;
     for (int i = 0; i < num_columns; ++i) {
@@ -150,20 +151,14 @@ rows rote_db::_exec_prepared(const std::string& sql,
 
   if (rc != SQLITE_DONE) {
     std::stringstream ss;
-    ss << "could not execute statement: " << sqlite3_errmsg(__db) << " (" << rc << ")";
+    ss << "could not execute statement \""<< sql << "\" " << sqlite3_errmsg(__db) << " (" << rc << ")";
     throw std::runtime_error(ss.str());
   }
 
   return ret;
 }
 
-void rote_db::_insert(const std::string& table, const row& values) const {
-  _insert(table, values, "");
-}
-
-std::string rote_db::_insert(const std::string& table,
-                      const row& values,
-                      const std::string& ret) const {
+int rote_db::_insert(const std::string& table, const row& values) const {
   string_v cols, qs, vs;
   for (row::const_iterator it = values.begin(); it != values.end(); ++it) {
     const row_pair& pair = *it;
@@ -179,17 +174,9 @@ std::string rote_db::_insert(const std::string& table,
   sql +=   _join(qs, ",");
   sql += ")";
 
-  if (!ret.empty()) {
-    sql += " RETURNING "+ret;
-  }
+  _exec_prepared(sql, vs);
 
-  rubix::rows rows = _exec_prepared(sql, vs);
-
-  if (!ret.empty()) {
-    return rows[0].begin()->second;
-  }
-
-  return "";
+  return sqlite3_last_insert_rowid(__db);
 }
 
 void rote_db::_update(const std::string& table,
@@ -328,9 +315,9 @@ int rote_db::save_note(note *value) const {
 int rote_db::_insert_note(note *value) const {
   row values;
   values["note"]     = value->value();
-  values["created"]  = boost::gregorian::to_simple_string(value->created());
-  values["modified"] = boost::gregorian::to_simple_string(value->modified());
-  const int id = _str_to_int(_insert("notes", values, "note_id"));
+  values["created"]  = boost::posix_time::to_simple_string(value->created());
+  values["modified"] = boost::posix_time::to_simple_string(value->modified());
+  const int id = _insert("notes", values);
   value->id(id);
   return _save_tags(value);
 }
@@ -338,7 +325,7 @@ int rote_db::_insert_note(note *value) const {
 int rote_db::_update_note(const note *value) const {
   row values, conditions;
   values["note"]     = value->value();
-  values["modified"] = boost::gregorian::to_simple_string(value->modified());
+  values["modified"] = boost::posix_time::to_simple_string(value->modified());
   conditions["note_id"] = value->id();
   _update("notes", values, conditions);
   return _save_tags(value);
@@ -442,7 +429,7 @@ notes rote_db::search(const string_v& conditions, const sort& value) const {
 notes rote_db::by_tag(const std::string& tag, const sort& value) const {
   std::string sql;
   sql  = "SELECT *";
-  sql += "  FROM note";
+  sql += "  FROM notes";
   sql += "  WHERE note_id IN (";
   sql += "    SELECT note_id";
   sql += "      FROM notes_tags";
@@ -461,6 +448,23 @@ notes rote_db::by_tag(const std::string& tag, const sort& value) const {
     ret.push_back(note(row));
   }
   return ret;
+}
+
+int rote_db::num_notes() const {
+  return _get_int("SELECT COUNT(*) FROM notes");
+}
+
+void rote_db::delete_note(note* value) const {
+  if (!value) {
+    throw std::invalid_argument("can not delete NULL note");
+  } else if (!value->id()) {
+    throw std::invalid_argument("can not delete note without note_id");
+  }
+
+  row conditions;
+  conditions["note_id"] = _int_to_str(value->id());
+  _delete("notes", conditions);
+  value->clear();
 }
 };
 

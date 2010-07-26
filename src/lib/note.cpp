@@ -17,11 +17,15 @@ note::note(const row& val) {
   _modified(val.find("modified")->second);
 }
 
+boost::posix_time::ptime note::_now() const {
+  return boost::posix_time::second_clock::universal_time();
+}
+
 void note::_init() {
   id(0);
   value("");
-  _created(boost::gregorian::date());
-  _modified(boost::gregorian::date());
+  _created(_now());
+  _modified(_now());
   __tags.clear();
 }
 
@@ -54,36 +58,36 @@ const std::string& note::value() const {
 const std::string& note::value(const std::string& val) {
   __value = val;
   // TODO(jrubin) parse tags
-  _modified(boost::gregorian::date());
+  _modified(_now());
   return value();
 }
 
-const boost::gregorian::date& note::created() const {
+const boost::posix_time::ptime& note::created() const {
   return __created;
 }
 
-const boost::gregorian::date& note::_created(
-    const boost::gregorian::date& val) {
+const boost::posix_time::ptime& note::_created(
+    const boost::posix_time::ptime& val) {
   __created = val;
   return created();
 }
 
-const boost::gregorian::date& note::_created(const std::string& val) {
-  return _created(boost::gregorian::from_simple_string(val));
+const boost::posix_time::ptime& note::_created(const std::string& val) {
+  return _created(boost::posix_time::time_from_string(val));
 }
 
-const boost::gregorian::date& note::modified() const {
+const boost::posix_time::ptime& note::modified() const {
   return __modified;
 }
 
-const boost::gregorian::date& note::_modified(
-    const boost::gregorian::date& val) {
+const boost::posix_time::ptime& note::_modified(
+    const boost::posix_time::ptime& val) {
   __modified = val;
   return modified();
 }
 
-const boost::gregorian::date& note::_modified(const std::string& val) {
-  return _modified(boost::gregorian::from_simple_string(val));
+const boost::posix_time::ptime& note::_modified(const std::string& val) {
+  return _modified(boost::posix_time::time_from_string(val));
 }
 
 const rubix::tags& note::tags() const {
