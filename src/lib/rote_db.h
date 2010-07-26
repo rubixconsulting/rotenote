@@ -7,21 +7,10 @@
 #include <string>
 #include <vector>
 #include <map>
+#include "./types.h"
 #include "./note.h"
 
 namespace rubix {
-
-#define SCHEMA_VERSION 1
-
-enum sort {
-  TITLE,
-  TITLE_DESC,
-  CREATION,
-  CREATION_DESC,
-  MODIFIED,
-  MODIFIED_DESC
-};
-
 class rote_db {
   public:
     // constructors
@@ -29,20 +18,14 @@ class rote_db {
     ~rote_db();
 
     // methods
-    bool  save_note(const note*) const;
+    int   save_note(note* value) const;
     tags  list_tags() const;
     notes list_notes() const;
     notes list_notes(const sort&) const;
-    notes search(const std::string&) const;
+    notes search(const std::string&, const sort&) const;
     notes by_tag(const std::string&) const;
 
   private:
-    // typedefs
-    typedef std::map <const std::string, std::string> _row_;
-    typedef std::pair<const std::string, std::string> _row_pair_;
-    typedef std::vector<_row_>                        _rows_;
-    typedef std::vector<std::string>                  _string_v_;
-
     // properties
     sqlite3*    __db;
     std::string __db_filename;
@@ -52,22 +35,26 @@ class rote_db {
     void               _init_db() const;
     void               _upgrade_db() const;
     void               _exec(const std::string&) const;
-    void               _insert(const std::string&, const _row_&) const;
+    void               _insert(const std::string&, const row&) const;
     void               _update(const std::string&,
-                               const _row_&,
-                               const _row_&) const;
-    void               _delete(const std::string&, const _row_&) const;
-    void               _exec_prepared(const std::string&,
-                                      const _string_v_&) const;
-    bool               _insert_note(const note*) const;
-    bool               _update_note(const note*) const;
+                               const row&,
+                               const row&) const;
+    void               _delete(const std::string&, const row&) const;
+    int                _insert_note(note* value) const;
+    int                _update_note(const note*) const;
     int                _str_to_int(const std::string&) const;
     int                _get_int(const std::string&) const;
-    _row_              _get_row(const std::string&) const;
-    _rows_             _get_rows(const std::string&) const;
+    row                _get_row(const std::string&) const;
+    rows               _get_rows(const std::string&) const;
+    string_v           _get_col(const std::string&) const;
+    std::string        _exec_prepared(const std::string&,
+                                      const string_v&) const;
+    std::string        _insert(const std::string&,
+                               const row&,
+                               const std::string&) const;
     std::string        _get_val(const std::string&) const;
-    std::string        _join(const _string_v_&, const std::string&) const;
-    std::string        _make_qs(const _row_&, _string_v_*) const;
+    std::string        _join(const string_v&, const std::string&) const;
+    std::string        _make_qs(const row&, string_v*) const;
     const std::string& _db_filename() const;
     const std::string& _db_filename(const std::string&);
 };

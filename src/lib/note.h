@@ -7,20 +7,20 @@
 #include <string>
 #include <vector>
 #include <set>
+#include "./types.h"
 
 namespace rubix {
-typedef std::set<std::string> tags;
 class note {
   public:
     // constructors
     note();
-    note(const int&, const std::string&, const boost::gregorian::date&,
-         const boost::gregorian::date&);
+    explicit note(const row&);
 
     // methods
     void                          clear();
     const uint32_t&               id() const;
     const uint32_t&               id(const uint32_t&);
+    const uint32_t&               id(const std::string&);
     const rubix::tags&            tags() const;
     const std::string&            value() const;
     const std::string&            value(const std::string&);
@@ -37,7 +37,9 @@ class note {
 
     // methods
     void                          _init();
+    const boost::gregorian::date& _created(const std::string&);
     const boost::gregorian::date& _created(const boost::gregorian::date&);
+    const boost::gregorian::date& _modified(const std::string&);
     const boost::gregorian::date& _modified(const boost::gregorian::date&);
 };
 typedef std::vector<note> notes;

@@ -9,14 +9,12 @@ note::note() {
   _init();
 }
 
-note::note(const int& idval, const std::string& val,
-           const boost::gregorian::date& create,
-           const boost::gregorian::date& modify) {
+note::note(const row& val) {
   _init();
-  id(idval);
-  value(val);
-  _created(create);
-  _modified(modify);
+  id(val.find("note_id")->second);
+  value(val.find("note")->second);
+  _created(val.find("created")->second);
+  _modified(val.find("modified")->second);
 }
 
 void note::_init() {
@@ -40,6 +38,15 @@ const uint32_t& note::id(const uint32_t& val) {
   return id();
 }
 
+const uint32_t& note::id(const std::string& val) {
+  std::istringstream iss(val);
+  int ival;
+  if (iss >> ival) {
+    return id(ival);
+  }
+  throw std::runtime_error("could not convert string to int: "+val);
+}
+
 const std::string& note::value() const {
   return __value;
 }
@@ -61,6 +68,10 @@ const boost::gregorian::date& note::_created(
   return created();
 }
 
+const boost::gregorian::date& note::_created(const std::string& val) {
+  return _created(boost::gregorian::from_simple_string(val));
+}
+
 const boost::gregorian::date& note::modified() const {
   return __modified;
 }
@@ -69,6 +80,10 @@ const boost::gregorian::date& note::_modified(
     const boost::gregorian::date& val) {
   __modified = val;
   return modified();
+}
+
+const boost::gregorian::date& note::_modified(const std::string& val) {
+  return _modified(boost::gregorian::from_simple_string(val));
 }
 
 const rubix::tags& note::tags() const {

@@ -59,16 +59,26 @@ int rote_db::_get_int(const std::string& sql) const {
   return _str_to_int(_get_val(sql));
 }
 
-rote_db::_row_ rote_db::_get_row(const std::string& sql) const {
+rubix::row rote_db::_get_row(const std::string& sql) const {
   return _get_rows(sql)[0];
 }
 
-rote_db::_rows_ rote_db::_get_rows(const std::string& sql) const {
+rubix::string_v rote_db::_get_col(const std::string& sql) const {
+  string_v ret;
+  rubix::rows rows = _get_rows(sql);
+  for (rubix::rows::const_iterator it = rows.begin(); it != rows.end(); ++it) {
+    const row& row = *it;
+    ret.push_back(row.begin()->second);
+  }
+  return ret;
+}
+
+rubix::rows rote_db::_get_rows(const std::string& sql) const {
   char **result;
   int num_rows    = 0;
   int num_columns = 0;
   char *err_msg   = 0;
-  _rows_ results;
+  rows results;
 
   if (sqlite3_get_table(__db,
                         sql.c_str(),
@@ -84,7 +94,7 @@ rote_db::_rows_ rote_db::_get_rows(const std::string& sql) const {
   }
 
   for (int i = 0; i < num_rows; ++i) {
-    _row_ row;
+    row row;
     for (int j = 0; j < num_columns; ++j) {
       char* value = result[num_columns+(num_columns*i)+j];
       if (!value) {
@@ -101,9 +111,9 @@ rote_db::_rows_ rote_db::_get_rows(const std::string& sql) const {
   return results;
 }
 
-std::string rote_db::_join(const _string_v_& s, const std::string& glue) const {
+std::string rote_db::_join(const string_v& s, const std::string& glue) const {
   std::string ret;
-  for (_string_v_::size_type i = 0; i < s.size(); ++i) {
+  for (string_v::size_type i = 0; i < s.size(); ++i) {
     ret += s[i];
     if (i+1 < s.size()) {
       ret += glue;
@@ -112,16 +122,16 @@ std::string rote_db::_join(const _string_v_& s, const std::string& glue) const {
   return ret;
 }
 
-void rote_db::_exec_prepared(const std::string& sql,
-                             const _string_v_& vs) const {
+std::string rote_db::_exec_prepared(const std::string& sql,
+                             const string_v& vs) const {
   sqlite3_stmt *stmt;
-  if (sqlite3_prepare(__db, sql.c_str(), -1, &stmt, NULL) != SQLITE_OK) {
+  if (sqlite3_prepare_v2(__db, sql.c_str(), -1, &stmt, NULL) != SQLITE_OK) {
     std::stringstream ss;
     ss << "could not prepare statement: " << sql;
     throw std::runtime_error(ss.str());
   }
 
-  for (_string_v_::size_type i = 0; i < vs.size(); ++i) {
+  for (string_v::size_type i = 0; i < vs.size(); ++i) {
     const std::string& val = vs[i];
     if (sqlite3_bind_text(stmt,
                           i+1,
@@ -134,15 +144,27 @@ void rote_db::_exec_prepared(const std::string& sql,
     }
   }
 
-  if (sqlite3_step(stmt) != SQLITE_DONE) {
+  std::string ret;
+
+  if (sqlite3_step(stmt) == SQLITE_ROW) {
+    ret = (const char*)sqlite3_column_text(stmt, 0);
+  } else if (sqlite3_step(stmt) != SQLITE_DONE) {
       throw std::runtime_error("could not execute statement");
   }
+
+  return ret;
 }
 
-void rote_db::_insert(const std::string& table, const _row_& values) const {
-  _string_v_ cols, qs, vs;
-  for (_row_::const_iterator it = values.begin(); it != values.end(); ++it) {
-    const _row_pair_& pair = *it;
+void rote_db::_insert(const std::string& table, const row& values) const {
+  _insert(table, values, "");
+}
+
+std::string rote_db::_insert(const std::string& table,
+                      const row& values,
+                      const std::string& ret) const {
+  string_v cols, qs, vs;
+  for (row::const_iterator it = values.begin(); it != values.end(); ++it) {
+    const row_pair& pair = *it;
     cols.push_back(pair.first);
     qs.push_back("?");
     vs.push_back(pair.second);
@@ -155,14 +177,18 @@ void rote_db::_insert(const std::string& table, const _row_& values) const {
   sql +=   _join(qs, ",");
   sql += ")";
 
-  _exec_prepared(sql, vs);
+  if (!ret.empty()) {
+    sql += " RETURNING "+ret;
+  }
+
+  return _exec_prepared(sql, vs);
 }
 
 void rote_db::_update(const std::string& table,
-                      const _row_& values,
-                      const _row_& conditions) const {
+                      const row& values,
+                      const row& conditions) const {
   std::string sql;
-  _string_v_ vs;
+  string_v vs;
 
   sql  = "UPDATE "+table;
   sql += "  SET "+_make_qs(values, &vs);
@@ -171,9 +197,9 @@ void rote_db::_update(const std::string& table,
   _exec_prepared(sql, vs);
 }
 
-void rote_db::_delete(const std::string& table, const _row_& conditions) const {
+void rote_db::_delete(const std::string& table, const row& conditions) const {
   std::string sql;
-  _string_v_ vs;
+  string_v vs;
 
   sql  = "DELETE FROM "+table;
   sql += "  WHERE "+_make_qs(conditions, &vs);
@@ -181,14 +207,14 @@ void rote_db::_delete(const std::string& table, const _row_& conditions) const {
   _exec_prepared(sql, vs);
 }
 
-std::string rote_db::_make_qs(const _row_& values, _string_v_* vs) const {
+std::string rote_db::_make_qs(const row& values, string_v* vs) const {
   if (!vs) {
     throw std::runtime_error("invalid vs");
   }
   std::string ret;
-  _row_::size_type i = 0;
-  for (_row_::const_iterator it = values.begin(); it != values.end(); ++it) {
-    const _row_pair_& pair = *it;
+  row::size_type i = 0;
+  for (row::const_iterator it = values.begin(); it != values.end(); ++it) {
+    const row_pair& pair = *it;
     ret += pair.first + " = ?";
     vs->push_back(pair.second);
     if (i+1 < values.size()) {
@@ -238,7 +264,7 @@ void rote_db::_init_db() const {
   sql << ")";
   _exec(sql.str());
 
-  _row_ values;
+  row values;
   std::stringstream schema_version;
   schema_version << SCHEMA_VERSION;
   values["version"] = schema_version.str();
@@ -278,7 +304,7 @@ const std::string& rote_db::_db_filename(const std::string& value) {
   return _db_filename();
 }
 
-bool rote_db::save_note(const note *value) const {
+int rote_db::save_note(note *value) const {
   if (!value) {
     throw std::invalid_argument("can not save NULL note");
   } else if (!value->id()) {
@@ -287,37 +313,77 @@ bool rote_db::save_note(const note *value) const {
   return _update_note(value);
 }
 
-bool rote_db::_insert_note(const note *value) const {
-  // TODO(jrubin)
-  return false;
+int rote_db::_insert_note(note *value) const {
+  row values;
+  values["note"]     = value->value();
+  values["created"]  = boost::gregorian::to_simple_string(value->created());
+  values["modified"] = boost::gregorian::to_simple_string(value->modified());
+  const int id = _str_to_int(_insert("notes", values, "note_id"));
+  value->id(id);
+  return id;
 }
 
-bool rote_db::_update_note(const note *value) const {
-  // TODO(jrubin)
-  return false;
+int rote_db::_update_note(const note *value) const {
+  row values, conditions;
+  values["note"]     = value->value();
+  values["modified"] = boost::gregorian::to_simple_string(value->modified());
+  conditions["note_id"] = value->id();
+  _update("notes", values, conditions);
+  return value->id();
 }
 
 tags rote_db::list_tags() const {
+  string_v ts = _get_col("SELECT tag FROM tags");
   tags ret;
-  // TODO(jrubin)
+  for (string_v::const_iterator it = ts.begin(); it != ts.end(); ++it) {
+    const std::string& val = *it;
+    ret.insert(val);
+  }
   return ret;
 }
 
 notes rote_db::list_notes() const {
-  notes ret;
-  // TODO(jrubin)
-  return ret;
+  return list_notes(CREATION_DESC);
 }
 
 notes rote_db::list_notes(const sort& value) const {
-  notes ret;
-  // TODO(jrubin)
-  return ret;
+  return search("", value);
 }
 
-notes rote_db::search(const std::string& value) const {
+notes rote_db::search(const std::string& condition, const sort& value) const {
+  std::string sql;
+  sql  = "SELECT *";
+  sql += "  FROM note";
+  if (!condition.empty()) {
+    sql += "  WHERE LOWER(note) LIKE ?";
+  }
+  sql += "  ORDER BY ";
+  switch (value) {
+    case CREATION:
+      sql += "CREATED";
+      break;
+    case CREATION_DESC:
+      sql += "CREATED DESC";
+      break;
+    case MODIFIED:
+      sql += "MODIFIED";
+      break;
+    case MODIFIED_DESC:
+      sql += "MODIFIED DESC";
+      break;
+  }
+  rubix::rows rows;
+  if (condition.empty()) {
+    rows = _get_rows(sql);
+  } else {
+    // TODO(jrubin)
+    // rows = _get_rows(sql, conditions);
+  }
   notes ret;
-  // TODO(jrubin)
+  for (rubix::rows::const_iterator it = rows.begin(); it != rows.end(); ++it) {
+    const row& row = *it;
+    ret.push_back(note(row));
+  }
   return ret;
 }
 
