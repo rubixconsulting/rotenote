@@ -15,7 +15,7 @@ namespace rubix {
 class rote_db {
   public:
     // constructors
-    rote_db(const std::string&);
+    explicit rote_db(const std::string&);
     ~rote_db();
 
     // methods

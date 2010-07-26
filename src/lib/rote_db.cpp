@@ -245,7 +245,10 @@ void rote_db::_init_db() {
 }
 
 void rote_db::_upgrade_db() {
-  const int version = _get_int("SELECT MAX(version) AS version FROM schema_version");
+  std::string sql;
+  sql  = "SELECT MAX(version) AS version";
+  sql += "  FROM schema_version";
+  const int version = _get_int(sql);
 
   switch (version) {
     case 1:
