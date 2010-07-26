@@ -41,6 +41,9 @@ class rote_db {
                                const row&) const;
     void               _delete(const std::string&, const row&) const;
     void               _save_tag(const std::string&, const note* value) const;
+    void               _begin() const;
+    void               _commit() const;
+    void               _rollback() const;
     int                _insert(const std::string&, const row&) const;
     int                _insert_note(note* value) const;
     int                _update_note(const note*) const;

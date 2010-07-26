@@ -225,6 +225,8 @@ std::string rote_db::_make_qs(const row& values, string_v* vs) const {
 }
 
 void rote_db::_init_db() const {
+  _begin();
+
   std::stringstream sql;
 
   sql << "PRAGMA foreign_keys = ON";
@@ -266,6 +268,8 @@ void rote_db::_init_db() const {
   row values;
   values["version"] = _int_to_str(SCHEMA_VERSION);
   _insert("schema_version", values);
+
+  _commit();
 }
 
 void rote_db::_upgrade_db() const {
@@ -317,6 +321,7 @@ int rote_db::save_note(note *value) const {
 }
 
 int rote_db::_insert_note(note *value) const {
+  _begin();
   row values;
   values["note"]     = value->value();
   values["created"]  = boost::posix_time::to_simple_string(value->created());
@@ -327,6 +332,7 @@ int rote_db::_insert_note(note *value) const {
 }
 
 int rote_db::_update_note(const note *value) const {
+  _begin();
   row values, conditions;
   values["note"]     = value->value();
   values["modified"] = boost::posix_time::to_simple_string(value->modified());
@@ -349,6 +355,7 @@ int rote_db::_save_tags(const note *value) const {
     const std::string& tag = *it;
     _save_tag(tag, value);
   }
+  _commit();
   return value->id();
 }
 
@@ -469,6 +476,18 @@ void rote_db::delete_note(note* value) const {
   conditions["note_id"] = _int_to_str(value->id());
   _delete("notes", conditions);
   value->clear();
+}
+
+void rote_db::_begin() const {
+  _exec("BEGIN");
+}
+
+void rote_db::_commit() const {
+  _exec("COMMIT");
+}
+
+void rote_db::_rollback() const {
+  _exec("ROLLBACK");
 }
 };
 
