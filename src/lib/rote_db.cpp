@@ -55,13 +55,12 @@ int rote_db::_exec(const std::string& sql) {
   return rc;
 }
 
-int rote_db::_exec(const std::string& sql, _results_* results) {
+int rote_db::_exec(const std::string& sql, _rows_* results) {
   if (!results) {
-    throw std::invalid_argument("columns or data was null");
+    throw std::invalid_argument("results was null");
   }
 
-  results->columns.clear();
-  results->data.clear();
+  results->clear();
 
   char **result;
   int num_rows    = 0;
@@ -83,12 +82,12 @@ int rote_db::_exec(const std::string& sql, _results_* results) {
     throw std::runtime_error(ss.str());
   }
 
-  for (int i = 0; i < num_columns; ++i) {
-    results->columns.push_back(result[i]);
-  }
-
-  for (int i = 0; i < num_columns*num_rows; ++i) {
-    results->data.push_back(result[num_columns+i]);
+  for (int i = 0; i < num_rows; ++i) {
+    _row_ row;
+    for (int j = 0; j < num_columns; ++j) {
+      row[result[j]] = result[num_columns+(num_columns*i)+j];
+    }
+    results->push_back(row);
   }
 
   sqlite3_free(err_msg);
@@ -145,10 +144,10 @@ void rote_db::_init_db() {
 }
 
 void rote_db::_upgrade_db() {
-  _results_ results;
-  _exec("SELECT MAX(version) FROM schema_version", &results);
+  _rows_ results;
+  _exec("SELECT MAX(version) AS version FROM schema_version", &results);
 
-  const int version = _strToInt(results.data[0]);
+  const int version = _strToInt(results[0]["version"]);
 
   switch (version) {
     case 1:

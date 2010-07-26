@@ -6,6 +6,7 @@
 #include <sqlite3.h>
 #include <string>
 #include <vector>
+#include <map>
 
 namespace rubix {
 
@@ -15,7 +16,6 @@ namespace rubix {
 class rote_db {
   public:
     // typedef
-    typedef std::vector<std::string> stringV;
     // typedef std::vector<note>        notes;
     // typedef std::vector<location>    locations;
     // typedef std::vector<std::string> tags;
@@ -38,10 +38,8 @@ class rote_db {
     // locations listLocations()
   private:
     // typedefs
-    typedef struct {
-      stringV columns;
-      stringV data;
-    } _results_;
+    typedef std::map<const std::string, std::string> _row_;
+    typedef std::vector<_row_>                       _rows_;
 
     // properties
     sqlite3*    __db;
@@ -51,7 +49,7 @@ class rote_db {
     void               _init_db();
     void               _upgrade_db();
     int                _exec(const std::string&);
-    int                _exec(const std::string&, _results_*);
+    int                _exec(const std::string&, _rows_*);
     int                _strToInt(const std::string&);
     const std::string& _db_filename();
 };
