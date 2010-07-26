@@ -279,6 +279,20 @@ const std::string& rote_db::_db_filename(const std::string& value) {
 }
 
 bool rote_db::save_note(const note *value) const {
+  if (!value) {
+    throw std::invalid_argument("can not save NULL note");
+  } else if (!value->id()) {
+    return _insert_note(value);
+  }
+  return _update_note(value);
+}
+
+bool rote_db::_insert_note(const note *value) const {
+  // TODO(jrubin)
+  return false;
+}
+
+bool rote_db::_update_note(const note *value) const {
   // TODO(jrubin)
   return false;
 }

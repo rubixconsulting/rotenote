@@ -71,7 +71,7 @@ const boost::gregorian::date& note::_modified(
   return modified();
 }
 
-const std::vector<std::string>& note::tags() const {
+const rubix::tags& note::tags() const {
   return __tags;
 }
 };

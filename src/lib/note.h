@@ -6,8 +6,10 @@
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <string>
 #include <vector>
+#include <set>
 
 namespace rubix {
+typedef std::set<std::string> tags;
 class note {
   public:
     // constructors
@@ -16,22 +18,22 @@ class note {
          const boost::gregorian::date&);
 
     // methods
-    void                            clear();
-    const uint32_t&                 id() const;
-    const uint32_t&                 id(const uint32_t&);
-    const std::string&              value() const;
-    const std::string&              value(const std::string&);
-    const boost::gregorian::date&   created() const;
-    const boost::gregorian::date&   modified() const;
-    const std::vector<std::string>& tags() const;
+    void                          clear();
+    const uint32_t&               id() const;
+    const uint32_t&               id(const uint32_t&);
+    const rubix::tags&            tags() const;
+    const std::string&            value() const;
+    const std::string&            value(const std::string&);
+    const boost::gregorian::date& created() const;
+    const boost::gregorian::date& modified() const;
 
   private:
     // properties
     uint32_t                 __id;
+    rubix::tags              __tags;
     std::string              __value;
     boost::gregorian::date   __created;
     boost::gregorian::date   __modified;
-    std::vector<std::string> __tags;
 
     // methods
     void                          _init();

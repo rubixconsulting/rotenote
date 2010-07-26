@@ -7,7 +7,6 @@
 #include <string>
 #include <vector>
 #include <map>
-#include <set>
 #include "./note.h"
 
 namespace rubix {
@@ -22,8 +21,6 @@ enum sort {
   MODIFIED,
   MODIFIED_DESC
 };
-
-typedef std::set<std::string> tags;
 
 class rote_db {
   public:
@@ -62,6 +59,8 @@ class rote_db {
     void               _delete(const std::string&, const _row_&) const;
     void               _exec_prepared(const std::string&,
                                       const _string_v_&) const;
+    bool               _insert_note(const note*) const;
+    bool               _update_note(const note*) const;
     int                _str_to_int(const std::string&) const;
     int                _get_int(const std::string&) const;
     _row_              _get_row(const std::string&) const;
