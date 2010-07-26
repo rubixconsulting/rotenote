@@ -31,7 +31,7 @@ void note::clear() {
   _init();
 }
 
-const uint32_t& note::id() {
+const uint32_t& note::id() const {
   return __id;
 }
 
@@ -40,7 +40,7 @@ const uint32_t& note::id(const uint32_t& val) {
   return id();
 }
 
-const std::string& note::value() {
+const std::string& note::value() const {
   return __value;
 }
 
@@ -51,7 +51,7 @@ const std::string& note::value(const std::string& val) {
   return value();
 }
 
-const boost::gregorian::date& note::created() {
+const boost::gregorian::date& note::created() const {
   return __created;
 }
 
@@ -61,7 +61,7 @@ const boost::gregorian::date& note::_created(
   return created();
 }
 
-const boost::gregorian::date& note::modified() {
+const boost::gregorian::date& note::modified() const {
   return __modified;
 }
 
@@ -71,7 +71,7 @@ const boost::gregorian::date& note::_modified(
   return modified();
 }
 
-const std::vector<std::string>& note::tags() {
+const std::vector<std::string>& note::tags() const {
   return __tags;
 }
 };

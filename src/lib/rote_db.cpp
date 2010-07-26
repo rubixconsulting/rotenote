@@ -1,6 +1,7 @@
 // Copyright 2010 Rubix Consulting, Inc.
 
 #include "./rote_db.h"
+#include "./note.h"
 #include <stdexcept>
 #include <sstream>
 #include <string>
@@ -40,7 +41,7 @@ rote_db::~rote_db() {
   sqlite3_close(__db);
 }
 
-void rote_db::_exec(const std::string& sql) {
+void rote_db::_exec(const std::string& sql) const {
   char *err_msg   = 0;
   if (sqlite3_exec(__db, sql.c_str(), NULL, NULL, &err_msg) == SQLITE_OK) {
     return;
@@ -51,19 +52,19 @@ void rote_db::_exec(const std::string& sql) {
   throw std::runtime_error(ss.str());
 }
 
-std::string rote_db::_get_val(const std::string& sql) {
+std::string rote_db::_get_val(const std::string& sql) const {
   return _get_rows(sql)[0].begin()->second;
 }
 
-int rote_db::_get_int(const std::string& sql) {
+int rote_db::_get_int(const std::string& sql) const {
   return _str_to_int(_get_val(sql));
 }
 
-rote_db::_row_ rote_db::_get_row(const std::string& sql) {
+rote_db::_row_ rote_db::_get_row(const std::string& sql) const {
   return _get_rows(sql)[0];
 }
 
-rote_db::_rows_ rote_db::_get_rows(const std::string& sql) {
+rote_db::_rows_ rote_db::_get_rows(const std::string& sql) const {
   char **result;
   int num_rows    = 0;
   int num_columns = 0;
@@ -101,7 +102,7 @@ rote_db::_rows_ rote_db::_get_rows(const std::string& sql) {
   return results;
 }
 
-std::string rote_db::_join(const _string_v_& s, const std::string& glue) {
+std::string rote_db::_join(const _string_v_& s, const std::string& glue) const {
   std::string ret;
   for (_string_v_::size_type i = 0; i < s.size(); ++i) {
     ret += s[i];
@@ -112,7 +113,7 @@ std::string rote_db::_join(const _string_v_& s, const std::string& glue) {
   return ret;
 }
 
-void rote_db::_exec_prepared(const std::string& sql, const _string_v_& vs) {
+void rote_db::_exec_prepared(const std::string& sql, const _string_v_& vs) const {
   sqlite3_stmt *stmt;
   if (sqlite3_prepare(__db, sql.c_str(), -1, &stmt, NULL) != SQLITE_OK) {
     std::stringstream ss;
@@ -138,7 +139,7 @@ void rote_db::_exec_prepared(const std::string& sql, const _string_v_& vs) {
   }
 }
 
-void rote_db::_insert(const std::string& table, const _row_& values) {
+void rote_db::_insert(const std::string& table, const _row_& values) const {
   _string_v_ cols, qs, vs;
   for (_row_::const_iterator it = values.begin(); it != values.end(); ++it) {
     const _row_pair_& pair = *it;
@@ -159,7 +160,7 @@ void rote_db::_insert(const std::string& table, const _row_& values) {
 
 void rote_db::_update(const std::string& table,
                       const _row_& values,
-                      const _row_& conditions) {
+                      const _row_& conditions) const {
   std::string sql;
   _string_v_ vs;
 
@@ -170,7 +171,7 @@ void rote_db::_update(const std::string& table,
   _exec_prepared(sql, vs);
 }
 
-void rote_db::_delete(const std::string& table, const _row_& conditions) {
+void rote_db::_delete(const std::string& table, const _row_& conditions) const {
   std::string sql;
   _string_v_ vs;
 
@@ -180,7 +181,7 @@ void rote_db::_delete(const std::string& table, const _row_& conditions) {
   _exec_prepared(sql, vs);
 }
 
-std::string rote_db::_make_qs(const _row_& values, _string_v_* vs) {
+std::string rote_db::_make_qs(const _row_& values, _string_v_* vs) const {
   if (!vs) {
     throw std::runtime_error("invalid vs");
   }
@@ -198,7 +199,7 @@ std::string rote_db::_make_qs(const _row_& values, _string_v_* vs) {
   return ret;
 }
 
-void rote_db::_init_db() {
+void rote_db::_init_db() const {
   std::stringstream sql;
 
   sql << "PRAGMA foreign_keys = ON";
@@ -244,7 +245,7 @@ void rote_db::_init_db() {
   _insert("schema_version", values);
 }
 
-void rote_db::_upgrade_db() {
+void rote_db::_upgrade_db() const {
   std::string sql;
   sql  = "SELECT MAX(version) AS version";
   sql += "  FROM schema_version";
@@ -259,7 +260,7 @@ void rote_db::_upgrade_db() {
   }
 }
 
-int rote_db::_str_to_int(const std::string& value) {
+int rote_db::_str_to_int(const std::string& value) const {
   std::istringstream iss(value);
   int ret;
   if (iss >> ret) {
@@ -268,13 +269,37 @@ int rote_db::_str_to_int(const std::string& value) {
   throw std::runtime_error("could not convert string to int: "+value);
 }
 
-const std::string& rote_db::_db_filename() {
+const std::string& rote_db::_db_filename() const {
   return __db_filename;
 }
 
 const std::string& rote_db::_db_filename(const std::string& value) {
   __db_filename = value;
   return _db_filename();
+}
+
+bool rote_db::save_note(const note *value) const {
+  // TODO(jrubin)
+}
+
+std::vector<std::string> rote_db::list_tags() const {
+  // TODO(jrubin)
+}
+
+std::vector<note> rote_db::list_notes() const {
+  // TODO(jrubin)
+}
+
+std::vector<note> rote_db::list_notes(const sort& value) const {
+  // TODO(jrubin)
+}
+
+std::vector<note> rote_db::search(const std::string& value) const {
+  // TODO(jrubin)
+}
+
+std::vector<note> rote_db::by_tag(const std::string& value) const {
+  // TODO(jrubin)
 }
 };
 

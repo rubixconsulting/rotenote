@@ -12,6 +12,16 @@ namespace rubix {
 
 #define SCHEMA_VERSION 1
 
+enum sort {
+  TITLE,
+  TITLE_DESC,
+  CREATION,
+  CREATION_DESC,
+  MODIFIED,
+  MODIFIED_DESC
+};
+
+class note;
 class rote_db {
   public:
     // constructors
@@ -19,12 +29,12 @@ class rote_db {
     ~rote_db();
 
     // methods
-    // bool                     saveNote(note*)
-    // std::vector<std::string> listTags()
-    // std::vector<note>        listNotes();
-    // std::vector<note>        listNotes(sort)
-    // std::vector<note>        search(string)
-    // std::vector<note>        byTag(tag)
+    bool                     save_note(const note*) const;
+    std::vector<std::string> list_tags() const;
+    std::vector<note>        list_notes() const;
+    std::vector<note>        list_notes(const sort&) const;
+    std::vector<note>        search(const std::string&) const;
+    std::vector<note>        by_tag(const std::string&) const;
 
   private:
     // typedefs
@@ -39,21 +49,21 @@ class rote_db {
 
     // methods
     void               _init(const std::string&);
-    void               _init_db();
-    void               _upgrade_db();
-    void               _exec(const std::string&);
-    void               _insert(const std::string&, const _row_&);
-    void               _update(const std::string&, const _row_&, const _row_&);
-    void               _delete(const std::string&, const _row_&);
-    void               _exec_prepared(const std::string&, const _string_v_&);
-    int                _str_to_int(const std::string&);
-    int                _get_int(const std::string&);
-    _row_              _get_row(const std::string&);
-    _rows_             _get_rows(const std::string&);
-    std::string        _get_val(const std::string&);
-    std::string        _join(const _string_v_&, const std::string&);
-    std::string        _make_qs(const _row_&, _string_v_*);
-    const std::string& _db_filename();
+    void               _init_db() const;
+    void               _upgrade_db() const;
+    void               _exec(const std::string&) const;
+    void               _insert(const std::string&, const _row_&) const;
+    void               _update(const std::string&, const _row_&, const _row_&) const;
+    void               _delete(const std::string&, const _row_&) const;
+    void               _exec_prepared(const std::string&, const _string_v_&) const;
+    int                _str_to_int(const std::string&) const;
+    int                _get_int(const std::string&) const;
+    _row_              _get_row(const std::string&) const;
+    _rows_             _get_rows(const std::string&) const;
+    std::string        _get_val(const std::string&) const;
+    std::string        _join(const _string_v_&, const std::string&) const;
+    std::string        _make_qs(const _row_&, _string_v_*) const;
+    const std::string& _db_filename() const;
     const std::string& _db_filename(const std::string&);
 };
 };

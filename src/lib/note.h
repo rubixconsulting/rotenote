@@ -17,13 +17,13 @@ class note {
 
     // methods
     void                            clear();
-    const uint32_t&                 id();
+    const uint32_t&                 id() const;
     const uint32_t&                 id(const uint32_t&);
-    const std::string&              value();
+    const std::string&              value() const;
     const std::string&              value(const std::string&);
-    const boost::gregorian::date&   created();
-    const boost::gregorian::date&   modified();
-    const std::vector<std::string>& tags();
+    const boost::gregorian::date&   created() const;
+    const boost::gregorian::date&   modified() const;
+    const std::vector<std::string>& tags() const;
 
   private:
     // properties
