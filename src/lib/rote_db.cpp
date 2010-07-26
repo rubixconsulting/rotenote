@@ -56,7 +56,8 @@ std::string rote_db::_get_val(const std::string& sql) const {
   return _get_val(sql, vs);
 }
 
-std::string rote_db::_get_val(const std::string& sql, const string_v& vs) const {
+std::string rote_db::_get_val(const std::string& sql,
+                              const string_v& vs) const {
   return _get_rows(sql, vs)[0].begin()->second;
 }
 
@@ -119,7 +120,8 @@ rows rote_db::_exec_prepared(const std::string& sql,
   int rc = sqlite3_prepare_v2(__db, sql.c_str(), -1, &stmt, NULL);
   if (rc != SQLITE_OK) {
     std::stringstream ss;
-    ss << "could not prepare statement \""<< sql << "\" " << sqlite3_errmsg(__db) << " (" << rc << ")";
+    ss << "could not prepare statement \""<< sql << "\" ";
+    ss << sqlite3_errmsg(__db) << " (" << rc << ")";
     throw std::runtime_error(ss.str());
   }
 
@@ -143,7 +145,8 @@ rows rote_db::_exec_prepared(const std::string& sql,
   while (rc == SQLITE_ROW) {
     rubix::row row;
     for (int i = 0; i < num_columns; ++i) {
-      row[sqlite3_column_name(stmt, i)] = (const char*)sqlite3_column_text(stmt, i);
+      const char* column_name = sqlite3_column_name(stmt, i);
+      row[column_name] = (const char*)sqlite3_column_text(stmt, i);
     }
     ret.push_back(row);
     rc = sqlite3_step(stmt);
@@ -151,7 +154,8 @@ rows rote_db::_exec_prepared(const std::string& sql,
 
   if (rc != SQLITE_DONE) {
     std::stringstream ss;
-    ss << "could not execute statement \""<< sql << "\" " << sqlite3_errmsg(__db) << " (" << rc << ")";
+    ss << "could not execute statement \""<< sql << "\" ";
+    ss << sqlite3_errmsg(__db) << " (" << rc << ")";
     throw std::runtime_error(ss.str());
   }
 

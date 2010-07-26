@@ -18,14 +18,16 @@ int main(int argc, char **argv) {
   cout << "number of notes: " << db.num_notes() << "\n\n";
 
   note test;
-  //sleep(2);
+  // sleep(2);
   test.value("this is the title\nthis is the body of the first note");
   db.save_note(&test);
 
   cout << "test:\n";
   cout << "  id: " << test.id() << "\n";
-  cout << "  created:  " << boost::posix_time::to_simple_string(test.created())  << "\n";
-  cout << "  modified: " << boost::posix_time::to_simple_string(test.modified()) << "\n";
+  cout << "  created:  ";
+  cout << boost::posix_time::to_simple_string(test.created())  << "\n";
+  cout << "  modified: ";
+  cout << boost::posix_time::to_simple_string(test.modified()) << "\n";
   cout << test.value() << "\n\n";
 
   cout << "number of notes: " << db.num_notes() << "\n";
