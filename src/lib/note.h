@@ -38,6 +38,7 @@ class note {
     const boost::gregorian::date& _created(const boost::gregorian::date&);
     const boost::gregorian::date& _modified(const boost::gregorian::date&);
 };
+typedef std::vector<note> notes;
 };
 
 #endif  // SRC_LIB_NOTE_H_

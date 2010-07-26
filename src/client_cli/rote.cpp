@@ -1,9 +1,10 @@
 // Copyright 2010 Rubix Consulting, Inc.
 
+#include <stdlib.h>
+#include <sstream>
+#include <string>
 #include "./rote.h"
 #include "../lib/rote_db.h"
-#include <sstream>
-#include <stdlib.h>
 
 using ::rubix::rote_db;
 

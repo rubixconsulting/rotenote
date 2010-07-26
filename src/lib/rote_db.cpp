@@ -1,7 +1,6 @@
 // Copyright 2010 Rubix Consulting, Inc.
 
 #include "./rote_db.h"
-#include "./note.h"
 #include <stdexcept>
 #include <sstream>
 #include <string>
@@ -113,7 +112,8 @@ std::string rote_db::_join(const _string_v_& s, const std::string& glue) const {
   return ret;
 }
 
-void rote_db::_exec_prepared(const std::string& sql, const _string_v_& vs) const {
+void rote_db::_exec_prepared(const std::string& sql,
+                             const _string_v_& vs) const {
   sqlite3_stmt *stmt;
   if (sqlite3_prepare(__db, sql.c_str(), -1, &stmt, NULL) != SQLITE_OK) {
     std::stringstream ss;
@@ -283,32 +283,32 @@ bool rote_db::save_note(const note *value) const {
   return false;
 }
 
-std::set<std::string> rote_db::list_tags() const {
-  std::set<std::string> ret;
+tags rote_db::list_tags() const {
+  tags ret;
   // TODO(jrubin)
   return ret;
 }
 
-std::vector<note> rote_db::list_notes() const {
-  std::vector<note> ret;
+notes rote_db::list_notes() const {
+  notes ret;
   // TODO(jrubin)
   return ret;
 }
 
-std::vector<note> rote_db::list_notes(const sort& value) const {
-  std::vector<note> ret;
+notes rote_db::list_notes(const sort& value) const {
+  notes ret;
   // TODO(jrubin)
   return ret;
 }
 
-std::vector<note> rote_db::search(const std::string& value) const {
-  std::vector<note> ret;
+notes rote_db::search(const std::string& value) const {
+  notes ret;
   // TODO(jrubin)
   return ret;
 }
 
-std::vector<note> rote_db::by_tag(const std::string& value) const {
-  std::vector<note> ret;
+notes rote_db::by_tag(const std::string& value) const {
+  notes ret;
   // TODO(jrubin)
   return ret;
 }

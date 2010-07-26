@@ -8,6 +8,7 @@
 #include <vector>
 #include <map>
 #include <set>
+#include "./note.h"
 
 namespace rubix {
 
@@ -22,7 +23,8 @@ enum sort {
   MODIFIED_DESC
 };
 
-class note;
+typedef std::set<std::string> tags;
+
 class rote_db {
   public:
     // constructors
@@ -30,12 +32,12 @@ class rote_db {
     ~rote_db();
 
     // methods
-    bool                  save_note(const note*) const;
-    std::vector<note>     list_notes() const;
-    std::vector<note>     list_notes(const sort&) const;
-    std::vector<note>     search(const std::string&) const;
-    std::vector<note>     by_tag(const std::string&) const;
-    std::set<std::string> list_tags() const;
+    bool  save_note(const note*) const;
+    tags  list_tags() const;
+    notes list_notes() const;
+    notes list_notes(const sort&) const;
+    notes search(const std::string&) const;
+    notes by_tag(const std::string&) const;
 
   private:
     // typedefs
@@ -54,9 +56,12 @@ class rote_db {
     void               _upgrade_db() const;
     void               _exec(const std::string&) const;
     void               _insert(const std::string&, const _row_&) const;
-    void               _update(const std::string&, const _row_&, const _row_&) const;
+    void               _update(const std::string&,
+                               const _row_&,
+                               const _row_&) const;
     void               _delete(const std::string&, const _row_&) const;
-    void               _exec_prepared(const std::string&, const _string_v_&) const;
+    void               _exec_prepared(const std::string&,
+                                      const _string_v_&) const;
     int                _str_to_int(const std::string&) const;
     int                _get_int(const std::string&) const;
     _row_              _get_row(const std::string&) const;
