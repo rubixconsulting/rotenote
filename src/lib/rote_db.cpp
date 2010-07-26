@@ -29,43 +29,12 @@ rote_db::~rote_db() {
   sqlite3_close(__db);
 }
 
-int rote_db::_exec(const std::string& sql) {
+rote_db::_rows_ rote_db::_exec(const std::string& sql) {
   char **result;
   int num_rows    = 0;
   int num_columns = 0;
   char *err_msg   = 0;
-
-  int rc = sqlite3_get_table(__db, sql.c_str(),
-                             &result,
-                             &num_rows,
-                             &num_columns,
-                             &err_msg);
-
-  if (rc != SQLITE_OK) {
-    std::stringstream ss;
-    ss << "SQL error: " << err_msg;
-    sqlite3_free(err_msg);
-    sqlite3_free_table(result);
-    throw std::runtime_error(ss.str());
-  }
-
-  sqlite3_free(err_msg);
-  sqlite3_free_table(result);
-
-  return rc;
-}
-
-int rote_db::_exec(const std::string& sql, _rows_* results) {
-  if (!results) {
-    throw std::invalid_argument("results was null");
-  }
-
-  results->clear();
-
-  char **result;
-  int num_rows    = 0;
-  int num_columns = 0;
-  char *err_msg   = 0;
+  _rows_ results;
 
   int rc = sqlite3_get_table(__db,
                              sql.c_str(),
@@ -87,13 +56,13 @@ int rote_db::_exec(const std::string& sql, _rows_* results) {
     for (int j = 0; j < num_columns; ++j) {
       row[result[j]] = result[num_columns+(num_columns*i)+j];
     }
-    results->push_back(row);
+    results.push_back(row);
   }
 
   sqlite3_free(err_msg);
   sqlite3_free_table(result);
 
-  return rc;
+  return results;
 }
 
 void rote_db::_init_db() {
@@ -144,10 +113,9 @@ void rote_db::_init_db() {
 }
 
 void rote_db::_upgrade_db() {
-  _rows_ results;
-  _exec("SELECT MAX(version) AS version FROM schema_version", &results);
+  _rows_ results = _exec("SELECT MAX(version) AS version FROM schema_version");
 
-  const int version = _strToInt(results[0]["version"]);
+  const int version = _str_to_int(results[0]["version"]);
 
   switch (version) {
     case 1:
@@ -158,7 +126,7 @@ void rote_db::_upgrade_db() {
   }
 }
 
-int rote_db::_strToInt(const std::string& value) {
+int rote_db::_str_to_int(const std::string& value) {
   std::istringstream iss(value);
   int ret;
   if (iss >> ret) {

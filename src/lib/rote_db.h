@@ -48,9 +48,8 @@ class rote_db {
     // methods
     void               _init_db();
     void               _upgrade_db();
-    int                _exec(const std::string&);
-    int                _exec(const std::string&, _rows_*);
-    int                _strToInt(const std::string&);
+    int                _str_to_int(const std::string&);
+    _rows_             _exec(const std::string&);
     const std::string& _db_filename();
 };
 };
