@@ -46,10 +46,10 @@ int main (int argc, char **argv) {
 }
 
 std::string format_note(const std::string& in) {
-  const std::string title_start = "<span font_weight='bold' size='larger'>";
-  const std::string title_end   = "</span>";
-  const std::string body_start  = "<span font_style='italic'>";
-  const std::string body_end    = "</span>";
+  const std::string title_start = "<big><b>";
+  const std::string title_end   = "</b></big>";
+  const std::string body_start  = "<i>";
+  const std::string body_end    = "</i>";
 
   std::string out = title_start;
 
@@ -83,6 +83,11 @@ std::string format_note(const std::string& in) {
   return out;
 }
 
+std::string format_tag(const std::string& in) {
+  std::string out = "<small><i>"+in+"</i></small>";
+  return out;
+}
+
 void append_note_to_store(GtkListStore *note_store, const uint32_t& note_id, const std::string& note) {
   GtkTreeIter iter;
   const std::string markup = format_note(note);
@@ -92,8 +97,9 @@ void append_note_to_store(GtkListStore *note_store, const uint32_t& note_id, con
 
 void append_tag_to_store(GtkListStore *tag_store, const std::string& tag) {
   GtkTreeIter iter;
+  const std::string markup = format_tag(tag);
   gtk_list_store_append(tag_store, &iter);
-  gtk_list_store_set(tag_store, &iter, 0, tag.c_str(), -1);
+  gtk_list_store_set(tag_store, &iter, 0, tag.c_str(), 1, markup.c_str(), -1);
 }
 
 void on_quit_button_clicked() {

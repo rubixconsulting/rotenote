@@ -2,17 +2,19 @@
 <interface>
   <requires lib="gtk+" version="2.16"/>
   <!-- interface-naming-policy project-wide -->
-  <object class="GtkListStore" id="tag_list_store">
-    <columns>
-      <!-- column-name Tag -->
-      <column type="gchararray"/>
-    </columns>
-  </object>
   <object class="GtkListStore" id="note_list_store">
     <columns>
       <!-- column-name note_id -->
       <column type="gint"/>
       <!-- column-name note -->
+      <column type="gchararray"/>
+      <!-- column-name markup -->
+      <column type="gchararray"/>
+    </columns>
+  </object>
+  <object class="GtkListStore" id="tag_list_store">
+    <columns>
+      <!-- column-name tag -->
       <column type="gchararray"/>
       <!-- column-name markup -->
       <column type="gchararray"/>
@@ -203,7 +205,7 @@
                             <child>
                               <object class="GtkCellRendererText" id="tag_cell"/>
                               <attributes>
-                                <attribute name="text">0</attribute>
+                                <attribute name="markup">1</attribute>
                               </attributes>
                             </child>
                           </object>

@@ -27,6 +27,7 @@ void done_editing(GPid, gint, gpointer);
 void append_note_to_store(GtkListStore*, const uint32_t&, const std::string&);
 void append_tag_to_store(GtkListStore*, const std::string&);
 std::string format_note(const std::string&);
+std::string format_tag(const std::string&);
 
 #endif  // SRC_CLIENT_GTK_CLIENT_GTK_H_
 
