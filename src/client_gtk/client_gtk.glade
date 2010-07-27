@@ -17,8 +17,9 @@
   <object class="GtkWindow" id="main_window">
     <property name="border_width">6</property>
     <property name="title" translatable="yes">Rote Notes</property>
-    <property name="default_width">600</property>
-    <property name="default_height">400</property>
+    <property name="default_width">800</property>
+    <property name="default_height">600</property>
+    <signal name="destroy" handler="on_main_window_destroy"/>
     <child>
       <object class="GtkVBox" id="main_vbox">
         <property name="visible">True</property>
@@ -26,10 +27,12 @@
           <object class="GtkToolbar" id="main_toolbar">
             <property name="visible">True</property>
             <child>
-              <object class="GtkToolButton" id="edit_button">
+              <object class="GtkToolButton" id="add_button">
                 <property name="visible">True</property>
-                <property name="use_underline">True</property>
-                <property name="stock_id">gtk-edit</property>
+                <property name="tooltip_text" translatable="yes">Add</property>
+                <property name="stock_id">gtk-add</property>
+                <accelerator key="a" signal="clicked"/>
+                <signal name="clicked" handler="on_add_button_clicked"/>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -37,9 +40,14 @@
               </packing>
             </child>
             <child>
-              <object class="GtkToolButton" id="add_button">
+              <object class="GtkToolButton" id="edit_button">
                 <property name="visible">True</property>
-                <property name="stock_id">gtk-add</property>
+                <property name="sensitive">False</property>
+                <property name="tooltip_text" translatable="yes">Edit</property>
+                <property name="use_underline">True</property>
+                <property name="stock_id">gtk-edit</property>
+                <accelerator key="e" signal="clicked"/>
+                <signal name="clicked" handler="on_edit_button_clicked"/>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -50,8 +58,10 @@
               <object class="GtkToolButton" id="delete_button">
                 <property name="visible">True</property>
                 <property name="sensitive">False</property>
+                <property name="tooltip_text" translatable="yes">Delete</property>
                 <property name="use_underline">True</property>
                 <property name="stock_id">gtk-delete</property>
+                <accelerator key="d" signal="clicked"/>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -66,9 +76,12 @@
                     <property name="height_request">30</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
+                    <property name="has_focus">True</property>
+                    <property name="tooltip_text" translatable="yes">Search</property>
                     <property name="invisible_char">&#x25CF;</property>
-                    <property name="overwrite_mode">True</property>
                     <property name="primary_icon_stock">gtk-find</property>
+                    <accelerator key="slash" signal="grab-focus"/>
+                    <signal name="changed" handler="on_search_entry_changed"/>
                   </object>
                 </child>
               </object>
@@ -78,10 +91,27 @@
               </packing>
             </child>
             <child>
+              <object class="GtkToolButton" id="refresh_button">
+                <property name="visible">True</property>
+                <property name="sensitive">False</property>
+                <property name="tooltip_text" translatable="yes">Refresh</property>
+                <property name="use_underline">True</property>
+                <property name="stock_id">gtk-refresh</property>
+                <signal name="clicked" handler="on_refresh_button_clicked"/>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="homogeneous">True</property>
+              </packing>
+            </child>
+            <child>
               <object class="GtkToolButton" id="preferences_button">
                 <property name="visible">True</property>
+                <property name="sensitive">False</property>
+                <property name="tooltip_text" translatable="yes">Preferences</property>
                 <property name="use_underline">True</property>
                 <property name="stock_id">gtk-preferences</property>
+                <signal name="clicked" handler="on_preferences_button_clicked"/>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -91,8 +121,10 @@
             <child>
               <object class="GtkToolButton" id="quit_button">
                 <property name="visible">True</property>
+                <property name="tooltip_text" translatable="yes">Quit</property>
                 <property name="use_underline">True</property>
                 <property name="stock_id">gtk-quit</property>
+                <accelerator key="q" signal="clicked" modifiers="GDK_CONTROL_MASK"/>
                 <signal name="clicked" handler="on_quit_button_clicked"/>
               </object>
               <packing>
@@ -123,6 +155,7 @@
                     <child>
                       <object class="GtkTreeView" id="note_view">
                         <property name="width_request">200</property>
+                        <property name="height_request">350</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="model">note_list_store</property>
@@ -158,7 +191,6 @@
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="model">tag_list_store</property>
-                        <signal name="destroy" handler="gtk_main_quit"/>
                         <child>
                           <object class="GtkTreeViewColumn" id="tag_column">
                             <property name="title">Tags</property>
@@ -188,8 +220,8 @@
               <object class="GtkTextView" id="text_view">
                 <property name="width_request">300</property>
                 <property name="visible">True</property>
-                <property name="can_focus">True</property>
                 <property name="editable">False</property>
+                <property name="cursor_visible">False</property>
               </object>
               <packing>
                 <property name="resize">True</property>
