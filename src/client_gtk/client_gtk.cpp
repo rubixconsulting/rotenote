@@ -1,13 +1,8 @@
 // Copyright 2010 Rubix Consulting, Inc.
 
 #include "./client_gtk.h"
+#include <string.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <errno.h>
-#include <signal.h>
-#include <iostream>
-#include <sys/types.h>
-#include <sys/wait.h>
 
 int main (int argc, char **argv) {
   GtkBuilder *builder;
@@ -50,7 +45,7 @@ void on_edit_button_clicked() {
 }
 
 void on_add_button_clicked() {
-  edit_file("/tmp/note.txt.tmp");
+  edit_note("/tmp/note.txt.tmp", 12345);  // TODO(jrubin) use the real note id
 }
 
 void on_search_entry_changed() {
@@ -61,49 +56,35 @@ void on_main_window_destroy() {
   gtk_main_quit();
 }
 
-void setup_signals() {
-  struct sigaction sa;
+GPid edit_note(const std::string& fs, const uint32_t& data) {
+  char *fn = new char[fs.size()+1];
+  strncpy(fn, fs.c_str(), fs.size()+1);
 
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = SA_RESTART;
-  sa.sa_handler = quit_handler;
+  GPid pid;
+  gchar *argv[6];
 
-  sigaction(SIGTERM, &sa, NULL);
-  sigaction(SIGHUP, &sa, NULL);
-  sigaction(SIGINT, &sa, NULL);
-  sigaction(SIGQUIT, &sa, NULL);
+  argv[0] = (gchar*)"rgvim";
+  argv[1] = (gchar*)"-f";
+  argv[2] = (gchar*)"--cmd";
+  argv[3] = (gchar*)"set guioptions-=m guioptions-=T lines=40 columns=100";
+  argv[4] = fn;
+  argv[5] = NULL;
+
+  GSpawnFlags flags = (GSpawnFlags)(G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH);
+
+  int* note_id = new int(data);
+
+  g_spawn_async(NULL, argv, NULL, flags, NULL, NULL, &pid, NULL);
+  g_child_watch_add(pid, done_editing, note_id);
+  g_warning("spawned editor pid %d with data %d", pid, *note_id);
+
+  return pid;
 }
 
-void quit_handler(int signum) {
-  // TODO(jrubin) cleanup temp files
-  gtk_main_quit();
-}
-
-int edit_file(const std::string& filename) {
-  int status;
-  pid_t pid, rv;
-
-  switch (pid = fork()) {
-    case -1:
-      g_error("unable to run %s", VIM_EDITOR);
-      break;
-    case 0:
-      if (execlp(VIM_EDITOR, "-f", "-g", filename.c_str(), NULL)) {
-        int errsv = errno;
-        g_warning("error executing %s: %d", VIM_EDITOR, errsv);
-      }
-      exit(EXIT_SUCCESS);
-      break;
-  }
-
-  do {
-    rv = waitpid(pid, &status, 0);
-  } while (rv == -1 && errno == EINTR);
-
-  if (rv == -1 || !WIFEXITED(status)) {
-    return -1;
-  }
-  return WEXITSTATUS(status);
+void done_editing(GPid pid, gint status, gpointer data) {
+  g_warning("editor pid %d returned with status %d and data %d", pid, status, *(int*)data);
+  delete (int*)data;
+  g_spawn_close_pid(pid);
 }
 
 // vim: textwidth=80:wrap:expandtab:tabstop=2:formatoptions=croqlt:shiftwidth=2

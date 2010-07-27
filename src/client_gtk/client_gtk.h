@@ -3,6 +3,7 @@
 #ifndef SRC_CLIENT_GTK_CLIENT_GTK_H_
 #define SRC_CLIENT_GTK_CLIENT_GTK_H_
 
+#include <stdint.h>
 #include <gtk/gtk.h>
 #include <string>
 
@@ -19,10 +20,8 @@ void on_search_entry_changed();
 void on_main_window_destroy();
 }
 
-void setup_signals();
-void quit_handler(int);
-
-int edit_file(const std::string&);
+GPid edit_note(const std::string&, const uint32_t&);
+void done_editing(GPid, gint, gpointer);
 
 #endif  // SRC_CLIENT_GTK_CLIENT_GTK_H_
 
