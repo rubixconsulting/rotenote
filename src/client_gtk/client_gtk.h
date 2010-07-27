@@ -3,9 +3,12 @@
 #ifndef SRC_CLIENT_GTK_CLIENT_GTK_H_
 #define SRC_CLIENT_GTK_CLIENT_GTK_H_
 
-#include <gtkmm.h>
+#include <gtk/gtk.h>
 
-static void on_quit_button_clicked();
+extern "C" {
+G_MODULE_EXPORT void on_quit_button_clicked(GtkToolButton *button,
+                                            gpointer data);
+}
 
 #endif  // SRC_CLIENT_GTK_CLIENT_GTK_H_
 
