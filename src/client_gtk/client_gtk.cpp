@@ -1,13 +1,18 @@
 // Copyright 2010 Rubix Consulting, Inc.
 
 #include "./client_gtk.h"
+#include <iostream>
+#include <sstream>
 #include <string.h>
 #include <stdlib.h>
 
 int main (int argc, char **argv) {
-  GtkBuilder *builder;
-  GtkWidget  *window;
-  GError     *error = NULL;
+  GtkBuilder   *builder;
+  GtkWidget    *window;
+  GError       *error = NULL;
+  GtkListStore *note_store;
+  GtkListStore *tag_store;
+  std::stringstream data;
 
   gtk_init( &argc, &argv );
 
@@ -18,14 +23,77 @@ int main (int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
-  window = GTK_WIDGET(gtk_builder_get_object(builder, "main_window"));
+  window     = GTK_WIDGET(gtk_builder_get_object(builder, "main_window"));
+  note_store = GTK_LIST_STORE(gtk_builder_get_object(builder, "note_list_store"));
+  tag_store  = GTK_LIST_STORE(gtk_builder_get_object(builder, "tag_list_store"));
   gtk_builder_connect_signals(builder, NULL);
   g_object_unref(G_OBJECT(builder));
+
   gtk_widget_show(window);
+
+  for (uint32_t i = 0; i < 10; ++i) {
+    data << "Title " << i << "\nBody " << i;
+    append_note_to_store(note_store, i, data.str());
+    data.str("");
+    data << "Tag" << i;
+    append_tag_to_store(tag_store, data.str());
+    data.str("");
+  }
 
   gtk_main();
 
   return EXIT_SUCCESS;
+}
+
+std::string format_note(const std::string& in) {
+  const std::string title_start = "<span font_weight='bold' size='larger'>";
+  const std::string title_end   = "</span>";
+  const std::string body_start  = "<span font_style='italic'>";
+  const std::string body_end    = "</span>";
+
+  std::string out = title_start;
+
+  for (uint32_t i=0; i < in.size(); ++i) {
+    unsigned char j = in[i];
+    if (i > MAX_TITLE_LENGTH) {
+      break;
+    } else if (j == '\n') {
+      break;
+    }
+    out += j;
+  }
+
+  out += title_end + body_start;
+
+  bool found_body = false;
+  for (uint32_t i=0; i < in.size(); ++i) {
+    unsigned char j = in[i];
+    if (!found_body && (j != '\n')) {
+      continue;
+    }
+    found_body = true;
+    if (i > MAX_BODY_LENGTH) {
+      break;
+    }
+    out += j;
+  }
+
+  out += body_end;
+
+  return out;
+}
+
+void append_note_to_store(GtkListStore *note_store, const uint32_t& note_id, const std::string& note) {
+  GtkTreeIter iter;
+  const std::string markup = format_note(note);
+  gtk_list_store_append(note_store, &iter);
+  gtk_list_store_set(note_store, &iter, 0, note_id, 1, note.c_str(), 2, markup.c_str(), -1);
+}
+
+void append_tag_to_store(GtkListStore *tag_store, const std::string& tag) {
+  GtkTreeIter iter;
+  gtk_list_store_append(tag_store, &iter);
+  gtk_list_store_set(tag_store, &iter, 0, tag.c_str(), -1);
 }
 
 void on_quit_button_clicked() {
@@ -63,7 +131,7 @@ GPid edit_note(const std::string& fs, const uint32_t& data) {
   GPid pid;
   gchar *argv[6];
 
-  argv[0] = (gchar*)"rgvim";
+  argv[0] = (gchar*)VIM_EDITOR;
   argv[1] = (gchar*)"-f";
   argv[2] = (gchar*)"--cmd";
   argv[3] = (gchar*)"set guioptions-=m guioptions-=T lines=40 columns=100";

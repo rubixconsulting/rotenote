@@ -8,7 +8,9 @@
 #include <string>
 
 #define GLADE_FILE "client_gtk.glade"
-#define VIM_EDITOR "rvim"
+#define VIM_EDITOR "rgvim"
+#define MAX_TITLE_LENGTH 40
+#define MAX_BODY_LENGTH 40
 
 extern "C" {
 void on_quit_button_clicked();
@@ -22,6 +24,9 @@ void on_main_window_destroy();
 
 GPid edit_note(const std::string&, const uint32_t&);
 void done_editing(GPid, gint, gpointer);
+void append_note_to_store(GtkListStore*, const uint32_t&, const std::string&);
+void append_tag_to_store(GtkListStore*, const std::string&);
+std::string format_note(const std::string&);
 
 #endif  // SRC_CLIENT_GTK_CLIENT_GTK_H_
 

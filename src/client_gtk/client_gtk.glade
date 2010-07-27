@@ -10,7 +10,11 @@
   </object>
   <object class="GtkListStore" id="note_list_store">
     <columns>
-      <!-- column-name Note -->
+      <!-- column-name note_id -->
+      <column type="gint"/>
+      <!-- column-name note -->
+      <column type="gchararray"/>
+      <!-- column-name markup -->
       <column type="gchararray"/>
     </columns>
   </object>
@@ -31,7 +35,7 @@
                 <property name="visible">True</property>
                 <property name="tooltip_text" translatable="yes">Add</property>
                 <property name="stock_id">gtk-add</property>
-                <accelerator key="a" signal="clicked"/>
+                <accelerator key="a" signal="clicked" modifiers="GDK_CONTROL_MASK"/>
                 <signal name="clicked" handler="on_add_button_clicked"/>
               </object>
               <packing>
@@ -46,7 +50,7 @@
                 <property name="tooltip_text" translatable="yes">Edit</property>
                 <property name="use_underline">True</property>
                 <property name="stock_id">gtk-edit</property>
-                <accelerator key="e" signal="clicked"/>
+                <accelerator key="e" signal="clicked" modifiers="GDK_CONTROL_MASK"/>
                 <signal name="clicked" handler="on_edit_button_clicked"/>
               </object>
               <packing>
@@ -61,7 +65,7 @@
                 <property name="tooltip_text" translatable="yes">Delete</property>
                 <property name="use_underline">True</property>
                 <property name="stock_id">gtk-delete</property>
-                <accelerator key="d" signal="clicked"/>
+                <accelerator key="d" signal="clicked" modifiers="GDK_CONTROL_MASK"/>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -97,6 +101,7 @@
                 <property name="tooltip_text" translatable="yes">Refresh</property>
                 <property name="use_underline">True</property>
                 <property name="stock_id">gtk-refresh</property>
+                <accelerator key="r" signal="clicked" modifiers="GDK_CONTROL_MASK"/>
                 <signal name="clicked" handler="on_refresh_button_clicked"/>
               </object>
               <packing>
@@ -111,6 +116,7 @@
                 <property name="tooltip_text" translatable="yes">Preferences</property>
                 <property name="use_underline">True</property>
                 <property name="stock_id">gtk-preferences</property>
+                <accelerator key="p" signal="clicked" modifiers="GDK_CONTROL_MASK"/>
                 <signal name="clicked" handler="on_preferences_button_clicked"/>
               </object>
               <packing>
@@ -167,7 +173,7 @@
                             <child>
                               <object class="GtkCellRendererText" id="note_cell"/>
                               <attributes>
-                                <attribute name="text">0</attribute>
+                                <attribute name="markup">2</attribute>
                               </attributes>
                             </child>
                           </object>
