@@ -22,6 +22,8 @@ class note {
     const uint32_t&                 id(const uint32_t&);
     const uint32_t&                 id(const std::string&);
     const rubix::tags&              tags() const;
+    const std::string&              title() const;
+    const std::string&              body() const;
     const std::string&              value() const;
     const std::string&              value(const std::string&);
     const boost::posix_time::ptime& created() const;
@@ -31,12 +33,16 @@ class note {
     // properties
     uint32_t                 __id;
     rubix::tags              __tags;
+    std::string              __title;
+    std::string              __body;
     std::string              __value;
     boost::posix_time::ptime __created;
     boost::posix_time::ptime __modified;
 
     // methods
-    void                          _init();
+    void                            _init();
+    const std::string&              _title(const std::string&);
+    const std::string&              _body(const std::string&);
     boost::posix_time::ptime        _now() const;
     const boost::posix_time::ptime& _created(const std::string&);
     const boost::posix_time::ptime& _created(const boost::posix_time::ptime&);
