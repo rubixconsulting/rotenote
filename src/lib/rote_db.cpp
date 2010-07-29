@@ -416,7 +416,7 @@ std::string rote_db::_order_by(const sort& value) const {
 notes rote_db::search(const string_v& conditions, const sort& value) const {
   std::string sql;
   sql  = "SELECT *";
-  sql += "  FROM note";
+  sql += "  FROM notes";
   if (!conditions.empty()) {
     sql += "  WHERE LOWER(note) LIKE LOWER(?)";
   }
