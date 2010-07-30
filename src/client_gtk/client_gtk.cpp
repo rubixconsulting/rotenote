@@ -6,19 +6,29 @@
 #include <sstream>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+
 
 using ::rubix::rote_db;
 using ::rubix::note;
 using ::rubix::notes;
 using ::rubix::tags;
 using ::rubix::MODIFIED_DESC;
+using ::std::string;
+using ::std::ifstream;
+using ::std::stringstream;
 
-GtkListStore  *note_store = NULL;
-GtkListStore  *tag_store  = NULL;
-GtkTextBuffer *buffer     = NULL;
-rote_db       *db         = NULL;
+GtkListStore  *note_store  = NULL;
+GtkListStore  *tag_store   = NULL;
+GtkTextBuffer *buffer      = NULL;
+rote_db       *db          = NULL;
+string        *tmp_dir     = new string();
+uint32_t       new_note_id = 0;
 
-int main (int argc, char **argv) {
+int main(int argc, char **argv) {
   GtkWidget        *window         = NULL;
   GtkBuilder       *builder        = NULL;
   GtkTextView      *text_view      = NULL;
@@ -27,9 +37,11 @@ int main (int argc, char **argv) {
   GtkTreeSelection *note_selection = NULL;
   GtkTreeSelection *tag_selection  = NULL;
   GError           *error          = NULL;
-  std::stringstream data;
+  stringstream      data;
 
   db = new rote_db(dbfile());
+
+  make_temp_dir();
 
   gtk_init(&argc, &argv);
 
@@ -69,61 +81,100 @@ int main (int argc, char **argv) {
   show_notes_in_list(MODIFIED_DESC);
   show_tags_in_list();
 
+  gtk_tree_selection_select_path(note_selection,
+                                 gtk_tree_path_new_from_string("0"));
+
   gtk_widget_show(window);
 
   gtk_main();
 
+  delete_temp_dir();
+
   return EXIT_SUCCESS;
 }
 
-std::string dbfile() {
+void make_temp_dir() {
+  string tds = TMP_PATH_TEMPLATE;
+  char td[tds.size()+1];
+  strncpy(td, tds.c_str(), tds.size()+1);
+
+  if (!mkdtemp(td)) {
+    g_error("could not get temp dir from template %s", TMP_PATH_TEMPLATE);
+  }
+
+  *tmp_dir = td;
+}
+
+void delete_temp_dir() {
+  if (rmdir(tmp_dir->c_str())) {
+    g_error("could not delete temp dir: %d", errno);
+  }
+}
+
+string dbfile() {
   char *home = getenv("HOME");
-  std::stringstream ss;
+  stringstream ss;
   ss << home << "/." << DB_NAME;
   return ss.str();
 }
 
-std::string format_note(const note& n) {
-  std::string out;
+string format_note_for_buffer(const note& n) {
+  // TODO(jrubin)
+  return n.value();
+}
 
-  out  = "<big><b>";
-  out += n.title().substr(0, MAX_TITLE_LENGTH);
-  out += "</b></big>\n";
-  out += "<i>  ";
-  out += n.body().substr(0, MAX_BODY_LENGTH);
-  out += "</i>";
+string format_note_for_list(const note& n) {
+  string out;
+
+  std::string title_out;
+  title_out = n.title().substr(0, MAX_TITLE_LENGTH);
+
+  const std::string& body_in = n.body();
+  std::string body_out;
+  for (uint32_t i = 0; i < MAX_BODY_LENGTH; ++i) {
+    if (body_in.size() < i) {
+      break;
+    } else if (body_in[i] == '\n') {
+      body_out += ' ';
+      continue;
+    }
+    body_out += body_in[i];
+  }
+
+  out += g_markup_printf_escaped("<big><b>%s</b></big>\n", title_out.c_str());
+  out += g_markup_printf_escaped("<i>  %s</i>", body_out.c_str());
 
   return out;
 }
 
-std::string format_tag(const std::string& in) {
+string format_tag(const string& in) {
   return "<small><i>"+in+"</i></small>";
 }
 
 void append_note_to_list(const note& n) {
   GtkTreeIter iter;
-  const std::string markup = format_note(n);
+  const string markup = format_note_for_list(n);
   gtk_list_store_append(note_store, &iter);
   gtk_list_store_set(note_store, &iter, 0, n.id(), 1, n.value().c_str(), 2, markup.c_str(), -1);
 }
 
-void append_tag_to_list(const std::string& tag) {
-  GtkTreeIter iter;
-  const std::string markup = format_tag(tag);
-  gtk_list_store_append(tag_store, &iter);
-  gtk_list_store_set(tag_store, &iter, 0, tag.c_str(), 1, markup.c_str(), -1);
-}
-
 void prepend_note_to_list(const note& n) {
   GtkTreeIter iter;
-  const std::string markup = format_note(n);
+  const string markup = format_note_for_list(n);
   gtk_list_store_prepend(note_store, &iter);
   gtk_list_store_set(note_store, &iter, 0, n.id(), 1, n.value().c_str(), 2, markup.c_str(), -1);
 }
 
-void prepend_tag_to_list(const std::string& tag) {
+void append_tag_to_list(const string& tag) {
   GtkTreeIter iter;
-  const std::string markup = format_tag(tag);
+  const string markup = format_tag(tag);
+  gtk_list_store_append(tag_store, &iter);
+  gtk_list_store_set(tag_store, &iter, 0, tag.c_str(), 1, markup.c_str(), -1);
+}
+
+void prepend_tag_to_list(const string& tag) {
+  GtkTreeIter iter;
+  const string markup = format_tag(tag);
   gtk_list_store_prepend(tag_store, &iter);
   gtk_list_store_set(tag_store, &iter, 0, tag.c_str(), 1, markup.c_str(), -1);
 }
@@ -153,8 +204,9 @@ void on_tag_selection_changed(GtkTreeSelection *ts) {
 }
 
 void show_note_in_buffer(const gint& note_id) {
-  // TODO(jrubin) show note
-  g_warning("show note %d", note_id);
+  note n = db->by_id(note_id);
+  string text = format_note_for_buffer(n);
+  gtk_text_buffer_set_text(buffer, text.c_str(), text.size());
 }
 
 void clear_buffer() {
@@ -170,11 +222,14 @@ void show_notes_in_list(const rubix::sort& sort) {
 }
 
 void show_tags_in_list() {
-  // TODO(jrubin)
-  g_warning("showing all tags");
+  tags ts = db->list_tags();
+  for (tags::const_iterator it = ts.begin(); it != ts.end(); ++it) {
+    const string& t = *it;
+    append_tag_to_list(t);
+  }
 }
 
-void show_notes_with_tag_in_list(const std::string& tag) {
+void show_notes_with_tag_in_list(const string& tag) {
   // TODO(jrubin)
   g_warning("showing notes with tag %s", tag.c_str());
 }
@@ -215,25 +270,38 @@ void on_main_window_destroy() {
   gtk_main_quit();
 }
 
-GPid edit_note(const note* n) {
-  char* fn = new char[L_tmpnam];
-  GPid pid;
-  gchar *argv[6];
+gchar** editor_argv(gchar *fn) {
+  gchar **argv = new gchar*[6];
 
   argv[0] = (gchar*)VIM_EDITOR;
   argv[1] = (gchar*)"-f";
   argv[2] = (gchar*)"--cmd";
   argv[3] = (gchar*)"set guioptions-=m guioptions-=T lines=40 columns=100";
-  argv[4] = tmpnam_r(fn);
+  argv[4] = fn;
   argv[5] = NULL;
 
-  if (!fn) {
-    g_error("could not get temp file name");
+  return argv;
+}
+
+GPid edit_note(const note* n) {
+  stringstream fns;
+  fns << *tmp_dir << "/";
+  if (n) {
+    fns << "e" << n->id();
+  } else {
+    fns << "n" << new_note_id;
+    ++new_note_id;
   }
+  char *fn = new char[fns.str().size()+1];
+  strncpy(fn, fns.str().c_str(), fns.str().size());
 
-  g_warning("using temp file %s", fn);
-
+  gchar **argv = editor_argv(fn);
   GSpawnFlags flags = (GSpawnFlags)(G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH);
+  GPid pid;
+
+  g_spawn_async(NULL, argv, NULL, flags, NULL, NULL, &pid, NULL);
+
+  delete [] argv;
 
   tmp_note *tn = new tmp_note;
   if (n) {
@@ -241,14 +309,7 @@ GPid edit_note(const note* n) {
   }
   tn->file = fn;
 
-  g_spawn_async(NULL, argv, NULL, flags, NULL, NULL, &pid, NULL);
   g_child_watch_add(pid, done_editing, tn);
-
-  if (n) {
-    g_warning("spawned editor pid %d with data %d and file %s", pid, n->id(), fn);
-  } else {
-    g_warning("spawned editor pid %d with data 0 and file %s", pid, fn);
-  }
 
   delete [] fn;
 
@@ -257,7 +318,18 @@ GPid edit_note(const note* n) {
 
 void done_editing(GPid pid, gint status, gpointer data) {
   tmp_note *tn = (tmp_note*)data;
-  g_warning("editor pid %d returned with status %d, data %d and file %s", pid, status, tn->note.id(), tn->file.c_str());
+
+  struct stat buf;
+  if (!stat(tn->file.c_str(), &buf)) {
+    tn->note.load_from_file(tn->file);
+    unlink(tn->file.c_str());
+
+    if (tn->note.id() || !tn->note.value().empty()) {
+      db->save_note(&tn->note);
+      prepend_note_to_list(tn->note);
+    }
+  }
+
   delete (tmp_note*)data;
   g_spawn_close_pid(pid);
 }

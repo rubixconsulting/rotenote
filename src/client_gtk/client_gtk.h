@@ -8,10 +8,10 @@
 #include <gtk/gtk.h>
 #include <string>
 
-#define TMP_FILE   "rotenote"
-#define DB_NAME    "rotedb"
-#define GLADE_FILE "client_gtk.glade"
-#define VIM_EDITOR "rgvim"
+#define TMP_PATH_TEMPLATE "/tmp/rotenote_XXXXXX"
+#define DB_NAME           "rotedb"
+#define GLADE_FILE        "client_gtk.glade"
+#define VIM_EDITOR        "rgvim"
 
 #define MAX_TITLE_LENGTH 40
 #define MAX_BODY_LENGTH  40
@@ -46,7 +46,11 @@ void        show_tags_in_list();
 void        show_notes_with_tag_in_list(const std::string&);
 void        on_note_selection_changed(GtkTreeSelection*);
 void        on_tag_selection_changed(GtkTreeSelection*);
-std::string format_note(const rubix::note&);
+void        make_temp_dir();
+void        delete_temp_dir();
+gchar**     editor_argv(gchar*);
+std::string format_note_for_buffer(const rubix::note&);
+std::string format_note_for_list(const rubix::note&);
 std::string format_tag(const std::string&);
 std::string dbfile();
 
