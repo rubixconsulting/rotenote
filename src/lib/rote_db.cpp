@@ -342,7 +342,7 @@ int rote_db::_update_note(const note *value) const {
   row values, conditions;
   values["note"]     = value->value();
   values["modified"] = boost::posix_time::to_simple_string(value->modified());
-  conditions["note_id"] = value->id();
+  conditions["note_id"] = _int_to_str(value->id());
   _update("notes", values, conditions);
   return _save_tags(value);
 }

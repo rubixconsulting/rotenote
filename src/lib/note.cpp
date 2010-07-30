@@ -11,6 +11,7 @@ using ::std::runtime_error;
 using ::std::ostream;
 using ::std::istream;
 using ::std::ifstream;
+using ::std::ofstream;
 
 namespace rubix {
 note::note() {
@@ -174,6 +175,16 @@ const string& note::load_from_file(const string& fn) {
   }
   f.close();
   return value(new_value);
+}
+
+void note::write_to_file(const string& fn) const {
+  ofstream f(fn.c_str());
+  if (!f.is_open()) {
+    throw runtime_error("could not open file: "+fn);
+  }
+
+  f << value();
+  f.close();
 }
 };
 

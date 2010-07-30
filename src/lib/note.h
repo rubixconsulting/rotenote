@@ -21,6 +21,7 @@ class note {
 
     // methods
     void                            clear();
+    void                            write_to_file(const std::string&) const;
     const uint32_t&                 id() const;
     const uint32_t&                 id(const uint32_t&);
     const uint32_t&                 id(const std::string&);
