@@ -21,22 +21,22 @@ using ::std::string;
 using ::std::ifstream;
 using ::std::stringstream;
 
-GtkListStore  *note_store    = NULL;
-GtkListStore  *tag_store     = NULL;
-GtkTextBuffer *buffer        = NULL;
-GtkToolButton *edit_button   = NULL;
-GtkToolButton *delete_button = NULL;
-GtkTreeView   *note_view     = NULL;
-rote_db       *db            = NULL;
-string        *tmp_dir       = new string();
-uint32_t       new_note_id   = 0;
+GtkListStore     *note_store     = NULL;
+GtkListStore     *tag_store      = NULL;
+GtkTextBuffer    *buffer         = NULL;
+GtkToolButton    *edit_button    = NULL;
+GtkToolButton    *delete_button  = NULL;
+GtkTreeView      *note_view      = NULL;
+GtkTreeSelection *note_selection = NULL;
+rote_db          *db             = NULL;
+string           *tmp_dir        = new string();
+uint32_t          new_note_id    = 0;
 
 int main(int argc, char **argv) {
   GtkWidget        *window         = NULL;
   GtkBuilder       *builder        = NULL;
   GtkTextView      *text_view      = NULL;
   GtkTreeView      *tag_view       = NULL;
-  GtkTreeSelection *note_selection = NULL;
   GtkTreeSelection *tag_selection  = NULL;
   GError           *error          = NULL;
   stringstream      data;
@@ -84,17 +84,17 @@ int main(int argc, char **argv) {
 
   show_notes_in_list(MODIFIED_DESC);
   show_tags_in_list();
-
-  gtk_tree_selection_select_path(note_selection,
-                                 gtk_tree_path_new_from_string("0"));
-
+  select_first_note();
   gtk_widget_show(window);
-
   gtk_main();
-
   delete_temp_dir();
 
   return EXIT_SUCCESS;
+}
+
+void select_first_note() {
+  gtk_tree_selection_select_path(note_selection,
+                                 gtk_tree_path_new_from_string("0"));
 }
 
 void make_temp_dir() {
@@ -166,29 +166,66 @@ void append_note_to_list(const note& n) {
                      -1);
 }
 
+bool get_iter_for_note_in_list(const note& n, GtkTreeIter *iter) {
+  if (!n.id()) {
+    return false;
+  }
+
+  GtkTreeModel *tm = GTK_TREE_MODEL(note_store);
+  uint32_t note_id;
+  gboolean valid = gtk_tree_model_get_iter_first(tm, iter);
+  while (valid) {
+    gtk_tree_model_get(tm, iter, NOTE_ID_COLUMN, &note_id, -1);
+    if (note_id == n.id()) {
+      return true;
+    }
+    valid = gtk_tree_model_iter_next(tm, iter);
+  }
+
+  return false;
+}
+
 void update_note_in_list(const note& n) {
   if (!n.id()) {
     return;
   }
 
-  GtkTreeModel *tm = GTK_TREE_MODEL(note_store);
   GtkTreeIter iter;
-  uint32_t note_id;
-  gboolean valid = gtk_tree_model_get_iter_first(tm, &iter);
-  while (valid) {
-    gtk_tree_model_get(tm, &iter, NOTE_ID_COLUMN, &note_id, -1);
-    if (note_id == n.id()) {
-      const string markup = format_note_for_list(n);
-      gtk_list_store_set(note_store, &iter,
-                         NOTE_COLUMN,        n.value().c_str(),
-                         NOTE_MARKUP_COLUMN, markup.c_str(),
-                         -1);
-      if (n.id() == selected_note().id()) {
-        show_note_in_buffer(n.id());
-      }
-      break;
-    }
-    valid = gtk_tree_model_iter_next(tm, &iter);
+  if (!get_iter_for_note_in_list(n, &iter)) {
+    return;
+  }
+
+  const string markup = format_note_for_list(n);
+
+  gtk_list_store_set(note_store, &iter,
+                     NOTE_COLUMN,        n.value().c_str(),
+                     NOTE_MARKUP_COLUMN, markup.c_str(),
+                     -1);
+
+  if (n.id() == selected_note().id()) {
+    show_note_in_buffer(n.id());
+  }
+}
+
+void delete_note_from_list(const note& n) {
+  if (!n.id()) {
+    return;
+  }
+
+  GtkTreeIter iter;
+  if (!get_iter_for_note_in_list(n, &iter)) {
+    return;
+  }
+
+  bool selected = false;
+  if (n.id() == selected_note().id()) {
+    selected = true;
+  }
+
+  gtk_list_store_remove(note_store, &iter);
+
+  if (selected) {
+    select_first_note();
   }
 }
 
@@ -201,6 +238,9 @@ void prepend_note_to_list(const note& n) {
                      NOTE_COLUMN,        n.value().c_str(),
                      NOTE_MARKUP_COLUMN, markup.c_str(),
                      -1);
+  if (!selected_note().id()) {
+    select_first_note();
+  }
 }
 
 void append_tag_to_list(const string& tag) {
@@ -347,12 +387,6 @@ gchar** editor_argv(gchar *fn) {
   return argv;
 }
 
-bool delete_note(const note& n) {
-  // TODO(jrubin)
-  g_warning("delete note id: %d", n.id());
-  return false;
-}
-
 GPid edit_note(const note& n) {
   stringstream fns;
   fns << *tmp_dir << "/";
@@ -409,6 +443,11 @@ void done_editing(GPid pid, gint status, gpointer data) {
 
   delete (tmp_note*)data;
   g_spawn_close_pid(pid);
+}
+
+void delete_note(const note& n) {
+  delete_note_from_list(n);
+  db->delete_note(n);
 }
 
 // vim: textwidth=80:wrap:expandtab:tabstop=2:formatoptions=croqlt:shiftwidth=2
