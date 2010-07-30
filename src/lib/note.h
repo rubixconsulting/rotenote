@@ -16,6 +16,9 @@ class note {
     note();
     explicit note(const row&);
 
+    // operators
+    note& operator<<(const std::string&);
+
     // methods
     void                            clear();
     const uint32_t&                 id() const;
@@ -26,6 +29,7 @@ class note {
     const std::string&              body() const;
     const std::string&              value() const;
     const std::string&              value(const std::string&);
+    const std::string&              load_from_file(const std::string&);
     const boost::posix_time::ptime& created() const;
     const boost::posix_time::ptime& modified() const;
 
@@ -50,6 +54,8 @@ class note {
     const boost::posix_time::ptime& _modified(const boost::posix_time::ptime&);
 };
 typedef std::vector<note> notes;
+std::ostream& operator<<(std::ostream&, const note&);
+std::istream& operator>>(std::istream&, note&);
 };
 
 #endif  // SRC_LIB_NOTE_H_

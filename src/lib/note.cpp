@@ -1,8 +1,16 @@
 // Copyright 2010 Rubix Consulting, Inc.
 
 #include "./note.h"
+#include <fstream>
 #include <string>
 #include <vector>
+
+using ::std::string;
+using ::std::istringstream;
+using ::std::runtime_error;
+using ::std::ostream;
+using ::std::istream;
+using ::std::ifstream;
 
 namespace rubix {
 note::note() {
@@ -31,20 +39,20 @@ void note::_init() {
   __tags.clear();
 }
 
-const std::string& note::title() const {
+const string& note::title() const {
   return __title;
 }
 
-const std::string& note::_title(const std::string& val) {
+const string& note::_title(const string& val) {
   __title = val;
   return title();
 }
 
-const std::string& note::body() const {
+const string& note::body() const {
   return __body;
 }
 
-const std::string& note::_body(const std::string& val) {
+const string& note::_body(const string& val) {
   __body = val;
   return body();
 }
@@ -62,26 +70,26 @@ const uint32_t& note::id(const uint32_t& val) {
   return id();
 }
 
-const uint32_t& note::id(const std::string& val) {
-  std::istringstream iss(val);
+const uint32_t& note::id(const string& val) {
+  istringstream iss(val);
   int ival;
   if (iss >> ival) {
     return id(ival);
   }
-  throw std::runtime_error("could not convert string to int: "+val);
+  throw runtime_error("could not convert string to int: "+val);
 }
 
-const std::string& note::value() const {
+const string& note::value() const {
   return __value;
 }
 
-const std::string& note::value(const std::string& val) {
+const string& note::value(const string& val) {
   __value = val;
 
   // TODO(jrubin) parse tags
 
   bool found_body = false;
-  std::string body, title;
+  string body, title;
   for (uint32_t i=0; i < val.size(); ++i) {
     unsigned char j = val[i];
     if (!found_body) {
@@ -111,7 +119,7 @@ const boost::posix_time::ptime& note::_created(
   return created();
 }
 
-const boost::posix_time::ptime& note::_created(const std::string& val) {
+const boost::posix_time::ptime& note::_created(const string& val) {
   return _created(boost::posix_time::time_from_string(val));
 }
 
@@ -125,12 +133,47 @@ const boost::posix_time::ptime& note::_modified(
   return modified();
 }
 
-const boost::posix_time::ptime& note::_modified(const std::string& val) {
+const boost::posix_time::ptime& note::_modified(const string& val) {
   return _modified(boost::posix_time::time_from_string(val));
 }
 
 const rubix::tags& note::tags() const {
   return __tags;
+}
+
+note& note::operator<<(const string& s) {
+  string old = value();
+  value(old+s);
+  return *this;
+}
+
+ostream& operator<<(ostream& os, const note& obj) {
+  os << obj.value();
+  return os;
+}
+
+istream& operator>>(istream& is, note& obj) {
+  string val;
+  is >> val;
+  obj.value(val);
+  return is;
+}
+
+const string& note::load_from_file(const string& fn) {
+  ifstream f(fn.c_str());
+  if (!f.is_open()) {
+    throw runtime_error("could not open file: "+fn);
+  }
+
+  string new_value, line;
+  while (getline(f, line)) {
+    new_value += line;
+    if (!(f.rdstate() & ifstream::eofbit)) {
+      new_value += "\n";
+    }
+  }
+  f.close();
+  return value(new_value);
 }
 };
 
