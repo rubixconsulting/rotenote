@@ -16,6 +16,17 @@
 #define MAX_TITLE_LENGTH 40
 #define MAX_BODY_LENGTH  40
 
+enum {
+  NOTE_ID_COLUMN,
+  NOTE_COLUMN,
+  NOTE_MARKUP_COLUMN
+};
+
+enum {
+  TAG_COLUMN,
+  TAG_MARKUP_COLUMN
+};
+
 typedef struct {
   rubix::note note;
   std::string file;
@@ -26,17 +37,18 @@ void on_quit_button_clicked();
 void on_preferences_button_clicked();
 void on_refresh_button_clicked();
 void on_edit_button_clicked();
+void on_delete_button_clicked();
 void on_add_button_clicked();
 void on_search_entry_changed();
 void on_main_window_destroy();
 }
 
-GPid        edit_note(const rubix::note*);
 void        done_editing(GPid, gint, gpointer);
 void        append_note_to_list(const rubix::note&);
 void        append_tag_to_list(const std::string&);
 void        prepend_note_to_list(const rubix::note&);
 void        prepend_tag_to_list(const std::string&);
+void        update_note_in_list(const rubix::note&);
 void        clear_notes_list();
 void        clear_tags_list();
 void        clear_buffer();
@@ -48,7 +60,10 @@ void        on_note_selection_changed(GtkTreeSelection*);
 void        on_tag_selection_changed(GtkTreeSelection*);
 void        make_temp_dir();
 void        delete_temp_dir();
+bool        delete_note(const rubix::note&);
+GPid        edit_note(const rubix::note&);
 gchar**     editor_argv(gchar*);
+rubix::note selected_note();
 std::string format_note_for_buffer(const rubix::note&);
 std::string format_note_for_list(const rubix::note&);
 std::string format_tag(const std::string&);

@@ -21,18 +21,20 @@ using ::std::string;
 using ::std::ifstream;
 using ::std::stringstream;
 
-GtkListStore  *note_store  = NULL;
-GtkListStore  *tag_store   = NULL;
-GtkTextBuffer *buffer      = NULL;
-rote_db       *db          = NULL;
-string        *tmp_dir     = new string();
-uint32_t       new_note_id = 0;
+GtkListStore  *note_store    = NULL;
+GtkListStore  *tag_store     = NULL;
+GtkTextBuffer *buffer        = NULL;
+GtkToolButton *edit_button   = NULL;
+GtkToolButton *delete_button = NULL;
+GtkTreeView   *note_view     = NULL;
+rote_db       *db            = NULL;
+string        *tmp_dir       = new string();
+uint32_t       new_note_id   = 0;
 
 int main(int argc, char **argv) {
   GtkWidget        *window         = NULL;
   GtkBuilder       *builder        = NULL;
   GtkTextView      *text_view      = NULL;
-  GtkTreeView      *note_view      = NULL;
   GtkTreeView      *tag_view       = NULL;
   GtkTreeSelection *note_selection = NULL;
   GtkTreeSelection *tag_selection  = NULL;
@@ -52,12 +54,14 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
-  window     = GTK_WIDGET(gtk_builder_get_object(builder, "main_window"));
-  text_view  = GTK_TEXT_VIEW(gtk_builder_get_object(builder, "text_view"));
-  note_store = GTK_LIST_STORE(gtk_builder_get_object(builder, "note_list_store"));
-  tag_store  = GTK_LIST_STORE(gtk_builder_get_object(builder, "tag_list_store"));
-  note_view  = GTK_TREE_VIEW(gtk_builder_get_object(builder, "note_view"));
-  tag_view   = GTK_TREE_VIEW(gtk_builder_get_object(builder, "tag_view"));
+  window        = GTK_WIDGET(gtk_builder_get_object(builder, "main_window"));
+  text_view     = GTK_TEXT_VIEW(gtk_builder_get_object(builder, "text_view"));
+  note_store    = GTK_LIST_STORE(gtk_builder_get_object(builder, "note_list_store"));
+  tag_store     = GTK_LIST_STORE(gtk_builder_get_object(builder, "tag_list_store"));
+  note_view     = GTK_TREE_VIEW(gtk_builder_get_object(builder, "note_view"));
+  tag_view      = GTK_TREE_VIEW(gtk_builder_get_object(builder, "tag_view"));
+  edit_button   = GTK_TOOL_BUTTON(gtk_builder_get_object(builder, "edit_button"));
+  delete_button = GTK_TOOL_BUTTON(gtk_builder_get_object(builder, "delete_button"));
 
   buffer = gtk_text_view_get_buffer(text_view);
 
@@ -112,7 +116,7 @@ void delete_temp_dir() {
 }
 
 string dbfile() {
-  char *home = getenv("HOME");
+  gchar *home = getenv("HOME");
   stringstream ss;
   ss << home << "/." << DB_NAME;
   return ss.str();
@@ -155,28 +159,68 @@ void append_note_to_list(const note& n) {
   GtkTreeIter iter;
   const string markup = format_note_for_list(n);
   gtk_list_store_append(note_store, &iter);
-  gtk_list_store_set(note_store, &iter, 0, n.id(), 1, n.value().c_str(), 2, markup.c_str(), -1);
+  gtk_list_store_set(note_store, &iter,
+                     NOTE_ID_COLUMN,     n.id(),
+                     NOTE_COLUMN,        n.value().c_str(),
+                     NOTE_MARKUP_COLUMN, markup.c_str(),
+                     -1);
+}
+
+void update_note_in_list(const note& n) {
+  if (!n.id()) {
+    return;
+  }
+
+  GtkTreeModel *tm = GTK_TREE_MODEL(note_store);
+  GtkTreeIter iter;
+  uint32_t note_id;
+  gboolean valid = gtk_tree_model_get_iter_first(tm, &iter);
+  while (valid) {
+    gtk_tree_model_get(tm, &iter, NOTE_ID_COLUMN, &note_id, -1);
+    if (note_id == n.id()) {
+      const string markup = format_note_for_list(n);
+      gtk_list_store_set(note_store, &iter,
+                         NOTE_COLUMN,        n.value().c_str(),
+                         NOTE_MARKUP_COLUMN, markup.c_str(),
+                         -1);
+      if (n.id() == selected_note().id()) {
+        show_note_in_buffer(n.id());
+      }
+      break;
+    }
+    valid = gtk_tree_model_iter_next(tm, &iter);
+  }
 }
 
 void prepend_note_to_list(const note& n) {
   GtkTreeIter iter;
   const string markup = format_note_for_list(n);
   gtk_list_store_prepend(note_store, &iter);
-  gtk_list_store_set(note_store, &iter, 0, n.id(), 1, n.value().c_str(), 2, markup.c_str(), -1);
+  gtk_list_store_set(note_store, &iter,
+                     NOTE_ID_COLUMN,     n.id(),
+                     NOTE_COLUMN,        n.value().c_str(),
+                     NOTE_MARKUP_COLUMN, markup.c_str(),
+                     -1);
 }
 
 void append_tag_to_list(const string& tag) {
   GtkTreeIter iter;
   const string markup = format_tag(tag);
   gtk_list_store_append(tag_store, &iter);
-  gtk_list_store_set(tag_store, &iter, 0, tag.c_str(), 1, markup.c_str(), -1);
+  gtk_list_store_set(tag_store, &iter,
+                     TAG_COLUMN,        tag.c_str(),
+                     TAG_MARKUP_COLUMN, markup.c_str(),
+                     -1);
 }
 
 void prepend_tag_to_list(const string& tag) {
   GtkTreeIter iter;
   const string markup = format_tag(tag);
   gtk_list_store_prepend(tag_store, &iter);
-  gtk_list_store_set(tag_store, &iter, 0, tag.c_str(), 1, markup.c_str(), -1);
+  gtk_list_store_set(tag_store, &iter,
+                     TAG_COLUMN,        tag.c_str(),
+                     TAG_MARKUP_COLUMN, markup.c_str(),
+                     -1);
 }
 
 void on_note_selection_changed(GtkTreeSelection *ts) {
@@ -184,10 +228,14 @@ void on_note_selection_changed(GtkTreeSelection *ts) {
   if (gtk_tree_selection_get_selected(ts, NULL, &iter)) {
     GtkTreeModel *tm = GTK_TREE_MODEL(note_store);
     gint note_id;
-    gtk_tree_model_get(tm, &iter, 0, &note_id, -1);
+    gtk_tree_model_get(tm, &iter, NOTE_ID_COLUMN, &note_id, -1);
     show_note_in_buffer(note_id);
+    gtk_widget_set_sensitive(GTK_WIDGET(edit_button),   true);
+    gtk_widget_set_sensitive(GTK_WIDGET(delete_button), true);
   } else {
     clear_buffer();
+    gtk_widget_set_sensitive(GTK_WIDGET(edit_button),   false);
+    gtk_widget_set_sensitive(GTK_WIDGET(delete_button), false);
   }
 }
 
@@ -196,7 +244,7 @@ void on_tag_selection_changed(GtkTreeSelection *ts) {
   if (gtk_tree_selection_get_selected(ts, NULL, &iter)) {
     GtkTreeModel *tm = GTK_TREE_MODEL(tag_store);
     gchar *tag;
-    gtk_tree_model_get(tm, &iter, 0, &tag, -1);
+    gtk_tree_model_get(tm, &iter, TAG_COLUMN, &tag, -1);
     show_notes_with_tag_in_list(tag);
   } else {
     show_notes_in_list(MODIFIED_DESC);
@@ -254,12 +302,28 @@ void on_refresh_button_clicked() {
   g_warning("on_refresh_button_clicked");
 }
 
+note selected_note() {
+  GtkTreeSelection *ts = gtk_tree_view_get_selection(note_view);
+  GtkTreeIter iter;
+  if (!gtk_tree_selection_get_selected(ts, NULL, &iter)) {
+    return note();
+  }
+  GtkTreeModel *tm = GTK_TREE_MODEL(note_store);
+  gint note_id;
+  gtk_tree_model_get(tm, &iter, NOTE_ID_COLUMN, &note_id, -1);
+  return db->by_id(note_id);
+}
+
 void on_edit_button_clicked() {
-  g_warning("on_edit_button_clicked");
+  edit_note(selected_note());
+}
+
+void on_delete_button_clicked() {
+  delete_note(selected_note());
 }
 
 void on_add_button_clicked() {
-  edit_note(NULL);
+  edit_note(note());
 }
 
 void on_search_entry_changed() {
@@ -283,29 +347,39 @@ gchar** editor_argv(gchar *fn) {
   return argv;
 }
 
-GPid edit_note(const note* n) {
+bool delete_note(const note& n) {
+  // TODO(jrubin)
+  g_warning("delete note id: %d", n.id());
+  return false;
+}
+
+GPid edit_note(const note& n) {
   stringstream fns;
   fns << *tmp_dir << "/";
-  if (n) {
-    fns << "e" << n->id();
+  if (n.id()) {
+    fns << "e" << n.id();
   } else {
     fns << "n" << new_note_id;
     ++new_note_id;
   }
-  char *fn = new char[fns.str().size()+1];
+  gchar *fn = new char[fns.str().size()+1];
   strncpy(fn, fns.str().c_str(), fns.str().size());
+
+  if (n.id()) {
+    n.write_to_file(fn);
+  }
 
   gchar **argv = editor_argv(fn);
   GSpawnFlags flags = (GSpawnFlags)(G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH);
-  GPid pid;
+  GPid pid = 0;
 
   g_spawn_async(NULL, argv, NULL, flags, NULL, NULL, &pid, NULL);
 
   delete [] argv;
 
   tmp_note *tn = new tmp_note;
-  if (n) {
-    tn->note = *n;
+  if (n.id()) {
+    tn->note = n;
   }
   tn->file = fn;
 
@@ -324,7 +398,10 @@ void done_editing(GPid pid, gint status, gpointer data) {
     tn->note.load_from_file(tn->file);
     unlink(tn->file.c_str());
 
-    if (tn->note.id() || !tn->note.value().empty()) {
+    if (tn->note.id()) {
+      db->save_note(&tn->note);
+      update_note_in_list(tn->note);
+    } else if (!tn->note.value().empty()) {
       db->save_note(&tn->note);
       prepend_note_to_list(tn->note);
     }
