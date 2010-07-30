@@ -18,7 +18,7 @@ class rote_db {
     ~rote_db();
 
     // methods
-    void  delete_note(note* value) const;
+    void  delete_note(const note& value) const;
     int   save_note(note* value) const;
     int   num_notes() const;
     tags  list_tags() const;

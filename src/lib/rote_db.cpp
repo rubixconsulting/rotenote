@@ -484,17 +484,14 @@ int rote_db::num_notes() const {
   return _get_int("SELECT COUNT(*) FROM notes");
 }
 
-void rote_db::delete_note(note* value) const {
-  if (!value) {
-    throw invalid_argument("can not delete NULL note");
-  } else if (!value->id()) {
+void rote_db::delete_note(const note& value) const {
+  if (!value.id()) {
     throw invalid_argument("can not delete note without note_id");
   }
 
   row conditions;
-  conditions["note_id"] = _int_to_str(value->id());
+  conditions["note_id"] = _int_to_str(value.id());
   _delete("notes", conditions);
-  value->clear();
 }
 
 void rote_db::_begin() const {
