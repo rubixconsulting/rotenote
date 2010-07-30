@@ -5,16 +5,22 @@
 #include <sstream>
 #include <string>
 
+using ::std::string;
+using ::std::stringstream;
+using ::std::istringstream;
+using ::std::invalid_argument;
+using ::std::runtime_error;
+
 namespace rubix {
-rote_db::rote_db(const std::string& dbfile) {
+rote_db::rote_db(const string& dbfile) {
   _init(dbfile);
 }
 
-void rote_db::_init(const std::string& value) {
+void rote_db::_init(const string& value) {
   __db = 0;
 
   if (value.empty()) {
-    throw std::invalid_argument("missing database filename");
+    throw invalid_argument("missing database filename");
   }
 
   _db_filename(value);
@@ -33,58 +39,58 @@ void rote_db::_init(const std::string& value) {
     return;
   }
 
-  throw std::runtime_error("could not open database: "+value);
+  throw runtime_error("could not open database: "+value);
 }
 
 rote_db::~rote_db() {
   sqlite3_close(__db);
 }
 
-void rote_db::_exec(const std::string& sql) const {
+void rote_db::_exec(const string& sql) const {
   char *err_msg   = 0;
   if (sqlite3_exec(__db, sql.c_str(), NULL, NULL, &err_msg) == SQLITE_OK) {
     return;
   }
-  std::stringstream ss;
+  stringstream ss;
   ss << "SQL error: " << err_msg;
   sqlite3_free(err_msg);
-  throw std::runtime_error(ss.str());
+  throw runtime_error(ss.str());
 }
 
-std::string rote_db::_get_val(const std::string& sql) const {
+string rote_db::_get_val(const string& sql) const {
   const string_v vs;
   return _get_val(sql, vs);
 }
 
-std::string rote_db::_get_val(const std::string& sql,
+string rote_db::_get_val(const string& sql,
                               const string_v& vs) const {
   return _get_rows(sql, vs)[0].begin()->second;
 }
 
-int rote_db::_get_int(const std::string& sql) const {
+int rote_db::_get_int(const string& sql) const {
   const string_v vs;
   return _get_int(sql, vs);
 }
 
-int rote_db::_get_int(const std::string& sql, const string_v& vs) const {
+int rote_db::_get_int(const string& sql, const string_v& vs) const {
   return _str_to_int(_get_val(sql, vs));
 }
 
-row rote_db::_get_row(const std::string& sql) const {
+row rote_db::_get_row(const string& sql) const {
   const string_v vs;
   return _get_row(sql, vs);
 }
 
-row rote_db::_get_row(const std::string& sql, const string_v& vs) const {
+row rote_db::_get_row(const string& sql, const string_v& vs) const {
   return _get_rows(sql, vs)[0];
 }
 
-string_v rote_db::_get_col(const std::string& sql) const {
+string_v rote_db::_get_col(const string& sql) const {
   const string_v vs;
   return _get_col(sql, vs);
 }
 
-string_v rote_db::_get_col(const std::string& sql, const string_v& vs) const {
+string_v rote_db::_get_col(const string& sql, const string_v& vs) const {
   string_v ret;
   rubix::rows rows = _get_rows(sql, vs);
   for (rubix::rows::const_iterator it = rows.begin(); it != rows.end(); ++it) {
@@ -94,17 +100,17 @@ string_v rote_db::_get_col(const std::string& sql, const string_v& vs) const {
   return ret;
 }
 
-rows rote_db::_get_rows(const std::string& sql) const {
+rows rote_db::_get_rows(const string& sql) const {
   const string_v vs;
   return _get_rows(sql, vs);
 }
 
-rows rote_db::_get_rows(const std::string& sql, const string_v& vs) const {
+rows rote_db::_get_rows(const string& sql, const string_v& vs) const {
   return _exec_prepared(sql, vs);
 }
 
-std::string rote_db::_join(const string_v& s, const std::string& glue) const {
-  std::string ret;
+string rote_db::_join(const string_v& s, const string& glue) const {
+  string ret;
   for (string_v::size_type i = 0; i < s.size(); ++i) {
     ret += s[i];
     if (i+1 < s.size()) {
@@ -114,27 +120,27 @@ std::string rote_db::_join(const string_v& s, const std::string& glue) const {
   return ret;
 }
 
-rows rote_db::_exec_prepared(const std::string& sql,
+rows rote_db::_exec_prepared(const string& sql,
                              const string_v& vs) const {
   sqlite3_stmt *stmt;
   int rc = sqlite3_prepare_v2(__db, sql.c_str(), -1, &stmt, NULL);
   if (rc != SQLITE_OK) {
-    std::stringstream ss;
+    stringstream ss;
     ss << "could not prepare statement \""<< sql << "\" ";
     ss << sqlite3_errmsg(__db) << " (" << rc << ")";
-    throw std::runtime_error(ss.str());
+    throw runtime_error(ss.str());
   }
 
   for (string_v::size_type i = 0; i < vs.size(); ++i) {
-    const std::string& val = vs[i];
+    const string& val = vs[i];
     if (sqlite3_bind_text(stmt,
                           i+1,
                           val.c_str(),
                           -1,
                           SQLITE_TRANSIENT) != SQLITE_OK) {
-      std::stringstream ss;
+      stringstream ss;
       ss << "could not bind text parameter: " << val;
-      throw std::runtime_error(ss.str());
+      throw runtime_error(ss.str());
     }
   }
 
@@ -153,16 +159,16 @@ rows rote_db::_exec_prepared(const std::string& sql,
   }
 
   if (rc != SQLITE_DONE) {
-    std::stringstream ss;
+    stringstream ss;
     ss << "could not execute statement \""<< sql << "\" ";
     ss << sqlite3_errmsg(__db) << " (" << rc << ")";
-    throw std::runtime_error(ss.str());
+    throw runtime_error(ss.str());
   }
 
   return ret;
 }
 
-int rote_db::_insert(const std::string& table, const row& values) const {
+int rote_db::_insert(const string& table, const row& values) const {
   string_v cols, qs, vs;
   for (row::const_iterator it = values.begin(); it != values.end(); ++it) {
     const row_pair& pair = *it;
@@ -171,7 +177,7 @@ int rote_db::_insert(const std::string& table, const row& values) const {
     vs.push_back(pair.second);
   }
 
-  std::string sql;
+  string sql;
   sql  = "INSERT INTO "+table+" (";
   sql +=   _join(cols, ",");
   sql += ") VALUES(";
@@ -183,10 +189,10 @@ int rote_db::_insert(const std::string& table, const row& values) const {
   return sqlite3_last_insert_rowid(__db);
 }
 
-void rote_db::_update(const std::string& table,
+void rote_db::_update(const string& table,
                       const row& values,
                       const row& conditions) const {
-  std::string sql;
+  string sql;
   string_v vs;
 
   sql  = "UPDATE "+table;
@@ -196,8 +202,8 @@ void rote_db::_update(const std::string& table,
   _exec_prepared(sql, vs);
 }
 
-void rote_db::_delete(const std::string& table, const row& conditions) const {
-  std::string sql;
+void rote_db::_delete(const string& table, const row& conditions) const {
+  string sql;
   string_v vs;
 
   sql  = "DELETE FROM "+table;
@@ -206,11 +212,11 @@ void rote_db::_delete(const std::string& table, const row& conditions) const {
   _exec_prepared(sql, vs);
 }
 
-std::string rote_db::_make_qs(const row& values, string_v* vs) const {
+string rote_db::_make_qs(const row& values, string_v* vs) const {
   if (!vs) {
-    throw std::runtime_error("invalid vs");
+    throw runtime_error("invalid vs");
   }
-  std::string ret;
+  string ret;
   row::size_type i = 0;
   for (row::const_iterator it = values.begin(); it != values.end(); ++it) {
     const row_pair& pair = *it;
@@ -227,7 +233,7 @@ std::string rote_db::_make_qs(const row& values, string_v* vs) const {
 void rote_db::_init_db() const {
   _begin();
 
-  std::stringstream sql;
+  stringstream sql;
 
   sql << "PRAGMA foreign_keys = ON";
   _exec(sql.str());
@@ -273,7 +279,7 @@ void rote_db::_init_db() const {
 }
 
 void rote_db::_upgrade_db() const {
-  std::string sql;
+  string sql;
   sql  = "SELECT MAX(version) AS version";
   sql += "  FROM schema_version";
   const int version = _get_int(sql);
@@ -283,37 +289,37 @@ void rote_db::_upgrade_db() const {
       return;
     // NOTE: add upgrade cases here
     default:
-      throw std::runtime_error("unknown schema version");
+      throw runtime_error("unknown schema version");
   }
 }
 
-std::string rote_db::_int_to_str(const int& value) const {
-  std::stringstream ss;
+string rote_db::_int_to_str(const int& value) const {
+  stringstream ss;
   ss << value;
   return ss.str();
 }
 
-int rote_db::_str_to_int(const std::string& value) const {
-  std::istringstream iss(value);
+int rote_db::_str_to_int(const string& value) const {
+  istringstream iss(value);
   int ret;
   if (iss >> ret) {
     return ret;
   }
-  throw std::runtime_error("could not convert string to int: "+value);
+  throw runtime_error("could not convert string to int: "+value);
 }
 
-const std::string& rote_db::_db_filename() const {
+const string& rote_db::_db_filename() const {
   return __db_filename;
 }
 
-const std::string& rote_db::_db_filename(const std::string& value) {
+const string& rote_db::_db_filename(const string& value) {
   __db_filename = value;
   return _db_filename();
 }
 
 int rote_db::save_note(note *value) const {
   if (!value) {
-    throw std::invalid_argument("can not save NULL note");
+    throw invalid_argument("can not save NULL note");
   } else if (!value->id()) {
     return _insert_note(value);
   }
@@ -346,21 +352,21 @@ int rote_db::_save_tags(const note *value) const {
   conditions["note_id"] = _int_to_str(value->id());
   _delete("notes_tags", conditions);
 
-  std::string sql;
+  string sql;
   sql = "DELETE FROM tags WHERE tag NOT IN (SELECT tag FROM notes_tags)";
   _exec(sql);
 
   tags t = value->tags();
   for (tags::const_iterator it = t.begin(); it != t.end(); ++it) {
-    const std::string& tag = *it;
+    const string& tag = *it;
     _save_tag(tag, value);
   }
   _commit();
   return value->id();
 }
 
-void rote_db::_save_tag(const std::string& tag, const note *value) const {
-  std::string sql;
+void rote_db::_save_tag(const string& tag, const note *value) const {
+  string sql;
   string_v conditions;
 
   sql  = "INSERT INTO tags (tag) VALUES(?)";
@@ -382,19 +388,19 @@ tags rote_db::list_tags() const {
   string_v ts = _get_col("SELECT tag FROM tags");
   tags ret;
   for (string_v::const_iterator it = ts.begin(); it != ts.end(); ++it) {
-    const std::string& val = *it;
+    const string& val = *it;
     ret.insert(val);
   }
   return ret;
 }
 
 notes rote_db::list_notes(const sort& value) const {
-  string_v conditions;
-  return search(conditions, value);
+  string condition;
+  return search(condition, value);
 }
 
-std::string rote_db::_order_by(const sort& value) const {
-  std::string ret;
+string rote_db::_order_by(const sort& value) const {
+  string ret;
   ret = "  ORDER BY ";
   switch (value) {
     case CREATION:
@@ -413,17 +419,19 @@ std::string rote_db::_order_by(const sort& value) const {
   return ret;
 }
 
-notes rote_db::search(const string_v& conditions, const sort& value) const {
-  std::string sql;
+notes rote_db::search(const string& condition, const sort& value) const {
+  string sql;
   sql  = "SELECT *";
   sql += "  FROM notes";
-  if (!conditions.empty()) {
+  if (!condition.empty()) {
     sql += "  WHERE LOWER(note) LIKE LOWER(?)";
   }
   sql += _order_by(value);
 
   rubix::rows rows;
-  if (!conditions.empty()) {
+  if (!condition.empty()) {
+    string_v conditions;
+    conditions.push_back(condition);
     rows = _get_rows(sql, conditions);
   } else {
     rows = _get_rows(sql);
@@ -437,8 +445,19 @@ notes rote_db::search(const string_v& conditions, const sort& value) const {
   return ret;
 }
 
-notes rote_db::by_tag(const std::string& tag, const sort& value) const {
-  std::string sql;
+note rote_db::by_id(const uint32_t& note_id) const {
+  string sql;
+  sql = "SELECT * FROM notes WHERE note_id = ?";
+
+  string_v conditions;
+  conditions.push_back(_int_to_str(note_id));
+  rubix::row row = _get_row(sql, conditions);
+
+  return note(row);
+}
+
+notes rote_db::by_tag(const string& tag, const sort& value) const {
+  string sql;
   sql  = "SELECT *";
   sql += "  FROM notes";
   sql += "  WHERE note_id IN (";
@@ -467,9 +486,9 @@ int rote_db::num_notes() const {
 
 void rote_db::delete_note(note* value) const {
   if (!value) {
-    throw std::invalid_argument("can not delete NULL note");
+    throw invalid_argument("can not delete NULL note");
   } else if (!value->id()) {
-    throw std::invalid_argument("can not delete note without note_id");
+    throw invalid_argument("can not delete note without note_id");
   }
 
   row conditions;

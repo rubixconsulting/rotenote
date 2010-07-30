@@ -22,8 +22,9 @@ class rote_db {
     int   save_note(note* value) const;
     int   num_notes() const;
     tags  list_tags() const;
+    note  by_id(const uint32_t&) const;
     notes list_notes(const sort&) const;
-    notes search(const string_v&, const sort&) const;
+    notes search(const std::string&, const sort&) const;
     notes by_tag(const std::string&, const sort&) const;
 
   private:
