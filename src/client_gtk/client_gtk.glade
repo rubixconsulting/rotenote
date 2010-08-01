@@ -84,9 +84,14 @@
                     <property name="tooltip_text" translatable="yes">Search</property>
                     <property name="invisible_char">&#x25CF;</property>
                     <property name="primary_icon_stock">gtk-find</property>
+                    <property name="primary_icon_activatable">True</property>
+                    <property name="primary_icon_sensitive">True</property>
+                    <property name="primary_icon_tooltip_text">Search</property>
                     <signal name="changed" handler="on_search_entry_changed"/>
+                    <signal name="icon_release" handler="on_search_entry_icon_release"/>
                     <signal name="focus_in_event" handler="on_search_entry_focus_in_event"/>
                     <signal name="focus_out_event" handler="on_search_entry_focus_out_event"/>
+                    <signal name="activate" handler="on_search_entry_activate"/>
                   </object>
                 </child>
               </object>
@@ -225,12 +230,22 @@
               </packing>
             </child>
             <child>
-              <object class="GtkTextView" id="text_view">
-                <property name="width_request">300</property>
+              <object class="GtkScrolledWindow" id="right_pane">
                 <property name="visible">True</property>
-                <property name="has_focus">True</property>
-                <property name="editable">False</property>
-                <property name="cursor_visible">False</property>
+                <property name="can_focus">True</property>
+                <property name="hscrollbar_policy">never</property>
+                <property name="vscrollbar_policy">automatic</property>
+                <child>
+                  <object class="GtkTextView" id="text_view">
+                    <property name="width_request">300</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="has_focus">True</property>
+                    <property name="editable">False</property>
+                    <property name="wrap_mode">word</property>
+                    <property name="cursor_visible">False</property>
+                  </object>
+                </child>
               </object>
               <packing>
                 <property name="resize">True</property>

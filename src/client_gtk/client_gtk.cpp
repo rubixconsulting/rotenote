@@ -12,15 +12,14 @@
 #include <sys/stat.h>
 #include <boost/algorithm/string.hpp>
 
-
+using ::std::string;
+using ::std::ifstream;
+using ::std::stringstream;
 using ::rubix::rote_db;
 using ::rubix::note;
 using ::rubix::notes;
 using ::rubix::tags;
 using ::rubix::MODIFIED_DESC;
-using ::std::string;
-using ::std::ifstream;
-using ::std::stringstream;
 
 GtkListStore     *note_store         = NULL;
 GtkListStore     *tag_store          = NULL;
@@ -125,9 +124,9 @@ int main(int argc, char **argv) {
   accel_group = gtk_accel_group_new();
   gtk_window_add_accel_group(GTK_WINDOW(window), accel_group);
 
-  show_notes_in_list(MODIFIED_DESC);
-  show_tags_in_list();
-  select_tag_in_list("all");
+  show_all_notes_in_list(MODIFIED_DESC);
+  show_all_tags_in_list();
+  select_tag_in_list(TAG_ALL);
   enable_hotkeys();
   gtk_widget_show(window);
   gtk_main();
@@ -224,11 +223,11 @@ string format_note_for_buffer(const note& n) {
 string format_note_for_list(const note& n) {
   string out;
 
-  std::string title_out;
+  string title_out;
   title_out = n.title().substr(0, MAX_TITLE_LENGTH);
 
-  const std::string& body_in = n.body();
-  std::string body_out;
+  const string& body_in = n.body();
+  string body_out;
   for (uint32_t i = 0; i < MAX_BODY_LENGTH; ++i) {
     if (body_in.size() < i) {
       break;
@@ -349,7 +348,7 @@ void select_tag_in_list(const string& t) {
 
   GtkTreeIter iter;
   if (!get_iter_for_tag_in_list(t, &iter)) {
-    if (!get_iter_for_tag_in_list("all", &iter)) {
+    if (!get_iter_for_tag_in_list(TAG_ALL, &iter)) {
       return;
     }
   }
@@ -427,11 +426,19 @@ void on_tag_selection_changed(GtkTreeSelection *ts) {
     GtkTreeModel *tm = GTK_TREE_MODEL(tag_store);
     gchar *tag;
     gtk_tree_model_get(tm, &iter, TAG_COLUMN, &tag, -1);
+    gtk_entry_set_text(search_entry, "");
     show_notes_with_tag_in_list(tag, MODIFIED_DESC);
   } else {
-    show_notes_in_list(MODIFIED_DESC);
+    if (search_text().empty()) {
+      show_all_notes_in_list(MODIFIED_DESC);
+      select_tag_in_list(TAG_ALL);
+    }
   }
   select_first_note();
+}
+
+string search_text() {
+  return gtk_entry_get_text(search_entry);
 }
 
 void show_note_in_buffer(const gint& note_id) {
@@ -444,21 +451,35 @@ void clear_buffer() {
   gtk_text_buffer_set_text(buffer, "", -1);
 }
 
-void show_notes_in_list(const rubix::sort& sort) {
+void show_all_notes_in_list(const rubix::sort& sort) {
   clear_notes_list();
   notes ns = db->list_notes(sort);
   for (notes::const_iterator it = ns.begin(); it != ns.end(); ++it) {
     const note& n = *it;
     append_note_to_list(n);
   }
+  select_first_note();
 }
 
-void show_tags_in_list() {
+void search(const string& text, const rubix::sort& sort) {
+  clear_notes_list();
+  notes ns = db->search(text, sort);
+  for (notes::const_iterator it = ns.begin(); it != ns.end(); ++it) {
+    const note& n = *it;
+    append_note_to_list(n);
+  }
+  select_first_note();
+}
+
+void show_all_tags_in_list() {
   clear_tags_list();
+  append_tag_to_list(TAG_ALL);
   tags ts = db->list_tags();
   for (tags::const_iterator it = ts.begin(); it != ts.end(); ++it) {
     const string& t = *it;
-    append_tag_to_list(t);
+    if (!boost::algorithm::equals(TAG_ALL, t)) {
+      append_tag_to_list(t);
+    }
   }
 }
 
@@ -514,6 +535,15 @@ note selected_note() {
   return db->by_id(note_id);
 }
 
+void deselect_tag_in_list() {
+  GtkTreeIter iter;
+  if (!selected_tag_iter(&iter)) {
+    return;
+  }
+
+  gtk_tree_selection_unselect_iter(tag_selection, &iter);
+}
+
 string selected_tag() {
   GtkTreeIter iter;
   if (!selected_tag_iter(&iter)) {
@@ -538,9 +568,49 @@ void on_add_button_clicked() {
 }
 
 void on_search_entry_changed() {
-  // TODO(jrubin)
-  // remember to add a secondary icon for clearing the search
-  g_warning("on_search_entry_changed");
+  const string text = search_text();
+  if (text.empty()) {
+    gtk_entry_set_icon_from_stock(search_entry,
+                                  GTK_ENTRY_ICON_SECONDARY,
+                                  NULL);
+    gtk_entry_set_icon_tooltip_markup(search_entry,
+                                      GTK_ENTRY_ICON_SECONDARY,
+                                      NULL);
+  } else {
+    gtk_entry_set_icon_from_stock(search_entry,
+                                  GTK_ENTRY_ICON_SECONDARY,
+                                  GTK_STOCK_CLEAR);
+    gtk_entry_set_icon_tooltip_markup(search_entry,
+                                      GTK_ENTRY_ICON_SECONDARY,
+                                      "Clear");
+  }
+}
+
+void on_search_entry_icon_release(GtkEntry *entry, GtkEntryIconPosition pos) {
+  switch (pos) {
+    case GTK_ENTRY_ICON_PRIMARY:
+      deselect_tag_in_list();
+      break;
+    case GTK_ENTRY_ICON_SECONDARY:
+      clear_search();
+      break;
+  }
+}
+
+void on_search_entry_activate() {
+  const string text = search_text();
+  if (text.empty()) {
+    clear_search();
+    return;
+  }
+  deselect_tag_in_list();
+  search(text, MODIFIED_DESC);
+}
+
+void clear_search() {
+  gtk_entry_set_text(search_entry, "");
+  show_all_notes_in_list(MODIFIED_DESC);
+  select_tag_in_list(TAG_ALL);
 }
 
 void on_main_window_destroy() {
@@ -608,14 +678,14 @@ void done_editing(GPid pid, gint status, gpointer data) {
     if (tn->note.id()) {
       db->save_note(&tn->note);
       update_note_in_list(tn->note);
-      show_tags_in_list();
-      select_tag_in_list("all");
+      show_all_tags_in_list();
+      select_tag_in_list(TAG_ALL);
       select_note_in_list(tn->note);
     } else if (!tn->note.value().empty()) {
       db->save_note(&tn->note);
       prepend_note_to_list(tn->note);
-      show_tags_in_list();
-      select_tag_in_list("all");
+      show_all_tags_in_list();
+      select_tag_in_list(TAG_ALL);
       select_note_in_list(tn->note);
     }
   }
@@ -631,7 +701,7 @@ void delete_note(const note& n) {
   note   note = selected_note();
   string tag  = selected_tag();
 
-  show_tags_in_list();
+  show_all_tags_in_list();
   select_tag_in_list(tag);
   select_note_in_list(note);
 }
