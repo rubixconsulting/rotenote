@@ -88,6 +88,36 @@ int main(int argc, char **argv) {
                    G_CALLBACK(on_tag_selection_changed),
                    NULL);
 
+  g_signal_new("select-previous",
+               GTK_TYPE_TREE_VIEW,
+               (GSignalFlags)(G_SIGNAL_RUN_LAST | G_SIGNAL_ACTION),
+               0,
+               NULL,
+               NULL,
+               g_cclosure_marshal_VOID__VOID,
+               G_TYPE_NONE,
+               0);
+
+  g_signal_new("select-next",
+               GTK_TYPE_TREE_VIEW,
+               (GSignalFlags)(G_SIGNAL_RUN_LAST | G_SIGNAL_ACTION),
+               0,
+               NULL,
+               NULL,
+               g_cclosure_marshal_VOID__VOID,
+               G_TYPE_NONE,
+               0);
+
+  g_signal_connect(G_OBJECT(note_view),
+                   "select-previous",
+                   G_CALLBACK(on_note_select_previous),
+                   NULL);
+
+  g_signal_connect(G_OBJECT(note_view),
+                   "select-next",
+                   G_CALLBACK(on_note_select_next),
+                   NULL);
+
   gtk_builder_connect_signals(builder, NULL);
   g_object_unref(G_OBJECT(builder));
 
@@ -103,6 +133,43 @@ int main(int argc, char **argv) {
   delete_temp_dir();
 
   return EXIT_SUCCESS;
+}
+
+void on_note_select_previous() {
+  select_previous_note();
+}
+
+void on_note_select_next() {
+  select_next_note();
+}
+
+void select_previous_note() {
+  GtkTreeIter iter;
+  if (!selected_note_iter(&iter)) {
+    return;
+  }
+  GtkTreeModel *tm = GTK_TREE_MODEL(note_store);
+  GtkTreePath *tp = gtk_tree_model_get_path(tm, &iter);
+
+  if (gtk_tree_path_prev(tp)) {
+    gtk_tree_selection_select_path(note_selection, tp);
+  }
+
+  gtk_tree_path_free(tp);
+}
+
+void select_next_note() {
+  GtkTreeIter iter;
+  if (!selected_note_iter(&iter)) {
+    return;
+  }
+  GtkTreeModel *tm = GTK_TREE_MODEL(note_store);
+  GtkTreePath *tp = gtk_tree_model_get_path(tm, &iter);
+
+  gtk_tree_path_next(tp);
+  gtk_tree_selection_select_path(note_selection, tp);
+
+  gtk_tree_path_free(tp);
 }
 
 void select_first_note() {
@@ -179,9 +246,9 @@ void append_note_to_list(const note& n) {
                      -1);
 }
 
-bool get_iter_for_note_in_list(const note& n, GtkTreeIter *iter) {
+gboolean get_iter_for_note_in_list(const note& n, GtkTreeIter *iter) {
   if (!n.id()) {
-    return false;
+    return FALSE;
   }
 
   GtkTreeModel *tm = GTK_TREE_MODEL(note_store);
@@ -190,12 +257,12 @@ bool get_iter_for_note_in_list(const note& n, GtkTreeIter *iter) {
   while (valid) {
     gtk_tree_model_get(tm, iter, NOTE_ID_COLUMN, &note_id, -1);
     if (note_id == n.id()) {
-      return true;
+      return TRUE;
     }
     valid = gtk_tree_model_iter_next(tm, iter);
   }
 
-  return false;
+  return FALSE;
 }
 
 void update_note_in_list(const note& n) {
@@ -355,10 +422,14 @@ void on_refresh_button_clicked() {
   g_warning("on_refresh_button_clicked");
 }
 
-note selected_note() {
+gboolean selected_note_iter(GtkTreeIter *iter) {
   GtkTreeSelection *ts = gtk_tree_view_get_selection(note_view);
+  return gtk_tree_selection_get_selected(ts, NULL, iter);
+}
+
+note selected_note() {
   GtkTreeIter iter;
-  if (!gtk_tree_selection_get_selected(ts, NULL, &iter)) {
+  if (!selected_note_iter(&iter)) {
     return note();
   }
   GtkTreeModel *tm = GTK_TREE_MODEL(note_store);
@@ -505,6 +576,18 @@ void enable_hotkeys() {
                              '/',
                              (GdkModifierType)0,
                              GTK_ACCEL_VISIBLE);
+  gtk_widget_add_accelerator(GTK_WIDGET(note_view),
+                             "select-previous",
+                             accel_group,
+                             'k',
+                             (GdkModifierType)0,
+                             GTK_ACCEL_VISIBLE);
+  gtk_widget_add_accelerator(GTK_WIDGET(note_view),
+                             "select-next",
+                             accel_group,
+                             'j',
+                             (GdkModifierType)0,
+                             GTK_ACCEL_VISIBLE);
 }
 
 void disable_hotkeys() {
@@ -528,6 +611,14 @@ void disable_hotkeys() {
   gtk_widget_remove_accelerator(GTK_WIDGET(search_entry),
                                 accel_group,
                                 '/',
+                                (GdkModifierType)0);
+  gtk_widget_remove_accelerator(GTK_WIDGET(note_view),
+                                accel_group,
+                                'j',
+                                (GdkModifierType)0);
+  gtk_widget_remove_accelerator(GTK_WIDGET(note_view),
+                                accel_group,
+                                'k',
                                 (GdkModifierType)0);
 }
 
