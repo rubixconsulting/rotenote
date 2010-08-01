@@ -33,14 +33,16 @@ typedef struct {
 } tmp_note;
 
 extern "C" {
-void on_quit_button_clicked();
-void on_preferences_button_clicked();
-void on_refresh_button_clicked();
-void on_edit_button_clicked();
-void on_delete_button_clicked();
-void on_add_button_clicked();
-void on_search_entry_changed();
-void on_main_window_destroy();
+void     on_quit_button_clicked();
+void     on_preferences_button_clicked();
+void     on_refresh_button_clicked();
+void     on_edit_button_clicked();
+void     on_delete_button_clicked();
+void     on_add_button_clicked();
+void     on_search_entry_changed();
+void     on_main_window_destroy();
+gboolean on_search_entry_focus_in_event();
+gboolean on_search_entry_focus_out_event();
 }
 
 void        done_editing(GPid, gint, gpointer);
@@ -63,6 +65,8 @@ void        make_temp_dir();
 void        delete_temp_dir();
 void        delete_note(const rubix::note&);
 void        select_first_note();
+void        enable_hotkeys();
+void        disable_hotkeys();
 bool        get_iter_for_note_in_list(const rubix::note&, GtkTreeIter*);
 GPid        edit_note(const rubix::note&);
 gchar**     editor_argv(gchar*);

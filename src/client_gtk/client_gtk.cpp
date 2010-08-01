@@ -21,16 +21,21 @@ using ::std::string;
 using ::std::ifstream;
 using ::std::stringstream;
 
-GtkListStore     *note_store     = NULL;
-GtkListStore     *tag_store      = NULL;
-GtkTextBuffer    *buffer         = NULL;
-GtkToolButton    *edit_button    = NULL;
-GtkToolButton    *delete_button  = NULL;
-GtkTreeView      *note_view      = NULL;
-GtkTreeSelection *note_selection = NULL;
-rote_db          *db             = NULL;
-string           *tmp_dir        = new string();
-uint32_t          new_note_id    = 0;
+GtkListStore     *note_store         = NULL;
+GtkListStore     *tag_store          = NULL;
+GtkTextBuffer    *buffer             = NULL;
+GtkToolButton    *add_button         = NULL;
+GtkToolButton    *edit_button        = NULL;
+GtkToolButton    *delete_button      = NULL;
+GtkToolButton    *refresh_button     = NULL;
+GtkToolButton    *preferences_button = NULL;
+GtkEntry         *search_entry       = NULL;
+GtkTreeView      *note_view          = NULL;
+GtkTreeSelection *note_selection     = NULL;
+GtkAccelGroup    *accel_group        = NULL;
+rote_db          *db                 = NULL;
+string           *tmp_dir            = new string();
+uint32_t          new_note_id        = 0;
 
 int main(int argc, char **argv) {
   GtkWidget        *window         = NULL;
@@ -54,14 +59,18 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
-  window        = GTK_WIDGET(gtk_builder_get_object(builder, "main_window"));
-  text_view     = GTK_TEXT_VIEW(gtk_builder_get_object(builder, "text_view"));
-  note_store    = GTK_LIST_STORE(gtk_builder_get_object(builder, "note_list_store"));
-  tag_store     = GTK_LIST_STORE(gtk_builder_get_object(builder, "tag_list_store"));
-  note_view     = GTK_TREE_VIEW(gtk_builder_get_object(builder, "note_view"));
-  tag_view      = GTK_TREE_VIEW(gtk_builder_get_object(builder, "tag_view"));
-  edit_button   = GTK_TOOL_BUTTON(gtk_builder_get_object(builder, "edit_button"));
-  delete_button = GTK_TOOL_BUTTON(gtk_builder_get_object(builder, "delete_button"));
+  window             = GTK_WIDGET(gtk_builder_get_object(builder, "main_window"));
+  text_view          = GTK_TEXT_VIEW(gtk_builder_get_object(builder, "text_view"));
+  note_store         = GTK_LIST_STORE(gtk_builder_get_object(builder, "note_list_store"));
+  tag_store          = GTK_LIST_STORE(gtk_builder_get_object(builder, "tag_list_store"));
+  note_view          = GTK_TREE_VIEW(gtk_builder_get_object(builder, "note_view"));
+  tag_view           = GTK_TREE_VIEW(gtk_builder_get_object(builder, "tag_view"));
+  add_button         = GTK_TOOL_BUTTON(gtk_builder_get_object(builder, "add_button"));
+  edit_button        = GTK_TOOL_BUTTON(gtk_builder_get_object(builder, "edit_button"));
+  delete_button      = GTK_TOOL_BUTTON(gtk_builder_get_object(builder, "delete_button"));
+  refresh_button     = GTK_TOOL_BUTTON(gtk_builder_get_object(builder, "refresh_button"));
+  preferences_button = GTK_TOOL_BUTTON(gtk_builder_get_object(builder, "preferences_button"));
+  search_entry       = GTK_ENTRY(gtk_builder_get_object(builder, "search_entry"));
 
   buffer = gtk_text_view_get_buffer(text_view);
 
@@ -82,9 +91,13 @@ int main(int argc, char **argv) {
   gtk_builder_connect_signals(builder, NULL);
   g_object_unref(G_OBJECT(builder));
 
+  accel_group = gtk_accel_group_new();
+  gtk_window_add_accel_group(GTK_WINDOW(window), accel_group);
+
   show_notes_in_list(MODIFIED_DESC);
   show_tags_in_list();
   select_first_note();
+  enable_hotkeys();
   gtk_widget_show(window);
   gtk_main();
   delete_temp_dir();
@@ -448,6 +461,74 @@ void done_editing(GPid pid, gint status, gpointer data) {
 void delete_note(const note& n) {
   delete_note_from_list(n);
   db->delete_note(n);
+}
+
+gboolean on_search_entry_focus_in_event() {
+  disable_hotkeys();
+  return FALSE;
+}
+
+gboolean on_search_entry_focus_out_event() {
+  enable_hotkeys();
+  return FALSE;
+}
+
+void enable_hotkeys() {
+  g_warning("enabling hotkeys");
+  gtk_widget_add_accelerator(GTK_WIDGET(add_button),
+                             "clicked",
+                             accel_group,
+                             'a',
+                             (GdkModifierType)0,
+                             GTK_ACCEL_VISIBLE);
+  gtk_widget_add_accelerator(GTK_WIDGET(edit_button),
+                             "clicked",
+                             accel_group,
+                             'e',
+                             (GdkModifierType)0,
+                             GTK_ACCEL_VISIBLE);
+  gtk_widget_add_accelerator(GTK_WIDGET(refresh_button),
+                             "clicked",
+                             accel_group,
+                             'r',
+                             (GdkModifierType)0,
+                             GTK_ACCEL_VISIBLE);
+  gtk_widget_add_accelerator(GTK_WIDGET(preferences_button),
+                             "clicked",
+                             accel_group,
+                             'p',
+                             (GdkModifierType)0,
+                             GTK_ACCEL_VISIBLE);
+  gtk_widget_add_accelerator(GTK_WIDGET(search_entry),
+                             "grab-focus",
+                             accel_group,
+                             '/',
+                             (GdkModifierType)0,
+                             GTK_ACCEL_VISIBLE);
+}
+
+void disable_hotkeys() {
+  g_warning("disabling hotkeys");
+  gtk_widget_remove_accelerator(GTK_WIDGET(add_button),
+                                accel_group,
+                                'a',
+                                (GdkModifierType)0);
+  gtk_widget_remove_accelerator(GTK_WIDGET(edit_button),
+                                accel_group,
+                                'e',
+                                (GdkModifierType)0);
+  gtk_widget_remove_accelerator(GTK_WIDGET(refresh_button),
+                                accel_group,
+                                'r',
+                                (GdkModifierType)0);
+  gtk_widget_remove_accelerator(GTK_WIDGET(preferences_button),
+                                accel_group,
+                                'p',
+                                (GdkModifierType)0);
+  gtk_widget_remove_accelerator(GTK_WIDGET(search_entry),
+                                accel_group,
+                                '/',
+                                (GdkModifierType)0);
 }
 
 // vim: textwidth=80:wrap:expandtab:tabstop=2:formatoptions=croqlt:shiftwidth=2
