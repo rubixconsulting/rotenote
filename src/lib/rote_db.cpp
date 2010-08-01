@@ -29,12 +29,14 @@ void rote_db::_init(const string& value) {
                        &__db,
                        SQLITE_OPEN_READWRITE,
                        NULL)) {
+    _enable_foreign_keys();
     _upgrade_db();
     return;
   } else if (!sqlite3_open_v2(value.c_str(),
                               &__db,
                               SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
                               NULL)) {
+    _enable_foreign_keys();
     _init_db();
     return;
   }
@@ -230,13 +232,14 @@ string rote_db::_make_qs(const row& values, string_v* vs) const {
   return ret;
 }
 
+void rote_db::_enable_foreign_keys() const {
+  _exec("PRAGMA foreign_keys = ON");
+}
+
 void rote_db::_init_db() const {
   _begin();
 
   stringstream sql;
-
-  sql << "PRAGMA foreign_keys = ON";
-  _exec(sql.str());
 
   sql.str("");
   sql << "CREATE TABLE schema_version (";
@@ -492,6 +495,10 @@ void rote_db::delete_note(const note& value) const {
   row conditions;
   conditions["note_id"] = _int_to_str(value.id());
   _delete("notes", conditions);
+
+  string sql;
+  sql = "DELETE FROM tags WHERE tag NOT IN (SELECT tag FROM notes_tags)";
+  _exec(sql);
 }
 
 void rote_db::_begin() const {

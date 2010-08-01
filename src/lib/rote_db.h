@@ -45,6 +45,7 @@ class rote_db {
     void               _begin() const;
     void               _commit() const;
     void               _rollback() const;
+    void               _enable_foreign_keys() const;
     int                _insert(const std::string&, const row&) const;
     int                _insert_note(note* value) const;
     int                _update_note(const note*) const;

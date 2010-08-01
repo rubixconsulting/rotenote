@@ -38,6 +38,7 @@ void note::_init() {
   _title("");
   _body("");
   __tags.clear();
+  __tags.insert("all");
 }
 
 const string& note::title() const {
@@ -91,6 +92,7 @@ const string& note::value(const string& val) {
   bool found_tag  = false;
   string body, title, tag;
   __tags.clear();
+  __tags.insert("all");
   for (uint32_t i=0; i < val.size(); ++i) {
     unsigned char j = val[i];
     if (!found_body) {
