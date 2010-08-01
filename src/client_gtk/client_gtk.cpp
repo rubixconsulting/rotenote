@@ -232,7 +232,7 @@ string format_note_for_list(const note& n) {
 }
 
 string format_tag(const string& in) {
-  return "<i>"+in+"</i>";
+  return g_markup_printf_escaped("<i>%s</i>", in.c_str());
 }
 
 void append_note_to_list(const note& n) {
@@ -365,7 +365,7 @@ void on_tag_selection_changed(GtkTreeSelection *ts) {
     GtkTreeModel *tm = GTK_TREE_MODEL(tag_store);
     gchar *tag;
     gtk_tree_model_get(tm, &iter, TAG_COLUMN, &tag, -1);
-    show_notes_with_tag_in_list(tag);
+    show_notes_with_tag_in_list(tag, MODIFIED_DESC);
   } else {
     show_notes_in_list(MODIFIED_DESC);
   }
@@ -382,6 +382,7 @@ void clear_buffer() {
 }
 
 void show_notes_in_list(const rubix::sort& sort) {
+  clear_notes_list();
   notes ns = db->list_notes(sort);
   for (notes::const_iterator it = ns.begin(); it != ns.end(); ++it) {
     const note& n = *it;
@@ -390,17 +391,21 @@ void show_notes_in_list(const rubix::sort& sort) {
 }
 
 void show_tags_in_list() {
-  tags ts = db->list_tags();
   clear_tags_list();
+  tags ts = db->list_tags();
   for (tags::const_iterator it = ts.begin(); it != ts.end(); ++it) {
     const string& t = *it;
     append_tag_to_list(t);
   }
 }
 
-void show_notes_with_tag_in_list(const string& tag) {
-  // TODO(jrubin)
-  g_warning("showing notes with tag %s", tag.c_str());
+void show_notes_with_tag_in_list(const string& tag, const rubix::sort& sort) {
+  clear_notes_list();
+  notes ns = db->by_tag(tag, sort);
+  for (notes::const_iterator it = ns.begin(); it != ns.end(); ++it) {
+    const note& n = *it;
+    append_note_to_list(n);
+  }
 }
 
 void clear_notes_list() {
@@ -416,10 +421,12 @@ void on_quit_button_clicked() {
 }
 
 void on_preferences_button_clicked() {
+  // TODO(jrubin)
   g_warning("on_preferences_button_clicked");
 }
 
 void on_refresh_button_clicked() {
+  // TODO(jrubin)
   g_warning("on_refresh_button_clicked");
 }
 
@@ -452,6 +459,7 @@ void on_add_button_clicked() {
 }
 
 void on_search_entry_changed() {
+  // TODO(jrubin)
   g_warning("on_search_entry_changed");
 }
 

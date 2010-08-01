@@ -58,7 +58,7 @@ void        clear_buffer();
 void        show_note_in_buffer(const gint&);
 void        show_notes_in_list(const rubix::sort&);
 void        show_tags_in_list();
-void        show_notes_with_tag_in_list(const std::string&);
+void        show_notes_with_tag_in_list(const std::string&, const rubix::sort&);
 void        on_note_selection_changed(GtkTreeSelection*);
 void        on_tag_selection_changed(GtkTreeSelection*);
 void        on_note_select_previous();
