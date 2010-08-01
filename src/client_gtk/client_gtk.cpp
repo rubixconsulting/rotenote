@@ -232,7 +232,7 @@ string format_note_for_list(const note& n) {
 }
 
 string format_tag(const string& in) {
-  return "<small><i>"+in+"</i></small>";
+  return "<i>"+in+"</i>";
 }
 
 void append_note_to_list(const note& n) {
@@ -391,6 +391,7 @@ void show_notes_in_list(const rubix::sort& sort) {
 
 void show_tags_in_list() {
   tags ts = db->list_tags();
+  clear_tags_list();
   for (tags::const_iterator it = ts.begin(); it != ts.end(); ++it) {
     const string& t = *it;
     append_tag_to_list(t);
@@ -519,9 +520,11 @@ void done_editing(GPid pid, gint status, gpointer data) {
     if (tn->note.id()) {
       db->save_note(&tn->note);
       update_note_in_list(tn->note);
+      show_tags_in_list();
     } else if (!tn->note.value().empty()) {
       db->save_note(&tn->note);
       prepend_note_to_list(tn->note);
+      show_tags_in_list();
     }
   }
 

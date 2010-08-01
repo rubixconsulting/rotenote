@@ -87,10 +87,10 @@ const string& note::value() const {
 const string& note::value(const string& val) {
   __value = val;
 
-  // TODO(jrubin) parse tags
-
   bool found_body = false;
-  string body, title;
+  bool found_tag  = false;
+  string body, title, tag;
+  __tags.clear();
   for (uint32_t i=0; i < val.size(); ++i) {
     unsigned char j = val[i];
     if (!found_body) {
@@ -100,8 +100,26 @@ const string& note::value(const string& val) {
         title += j;
       }
       continue;
+    } else if (j == '#') {
+      tag.clear();
+      found_tag = true;
+    } else if (found_tag) {
+      switch (j) {
+        case '.':
+        case ' ':
+        case '\t':
+        case '\r':
+        case '\n':
+        case '\f':
+          found_tag = false;
+          __tags.insert(tag);
+          break;
+        default:
+          tag += j;
+      }
+    } else {
+      body += j;
     }
-    body += j;
   }
   _title(title);
   _body(body);

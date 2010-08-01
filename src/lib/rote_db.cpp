@@ -369,10 +369,10 @@ void rote_db::_save_tag(const string& tag, const note *value) const {
   string sql;
   string_v conditions;
 
-  sql  = "INSERT INTO tags (tag) VALUES(?)";
+  sql  = "INSERT INTO tags (tag) SELECT ?";
   conditions.push_back(tag);
   sql += "  WHERE NOT EXISTS(";
-  sql += "    SELECT * FROM tags WHERE tag = ?";
+  sql += "    SELECT 1 FROM tags WHERE tag = ?";
   conditions.push_back(tag);
   sql += "  )";
 
