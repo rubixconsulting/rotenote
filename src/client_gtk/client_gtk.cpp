@@ -146,6 +146,7 @@ void on_note_select_next() {
 void select_previous_note() {
   GtkTreeIter iter;
   if (!selected_note_iter(&iter)) {
+    select_last_note();
     return;
   }
   GtkTreeModel *tm = GTK_TREE_MODEL(note_store);
@@ -161,6 +162,7 @@ void select_previous_note() {
 void select_next_note() {
   GtkTreeIter iter;
   if (!selected_note_iter(&iter)) {
+    select_first_note();
     return;
   }
   GtkTreeModel *tm = GTK_TREE_MODEL(note_store);
@@ -174,7 +176,18 @@ void select_next_note() {
 
 void select_first_note() {
   gtk_tree_selection_select_path(note_selection,
-                                 gtk_tree_path_new_from_string("0"));
+                                 gtk_tree_path_new_first());
+}
+
+void select_last_note() {
+  GtkTreeIter iter, prev;
+  GtkTreeModel *tm = GTK_TREE_MODEL(note_store);
+  gboolean valid = gtk_tree_model_get_iter_first(tm, &iter);
+  while (valid) {
+    prev = iter;
+    valid = gtk_tree_model_iter_next(tm, &iter);
+  }
+  gtk_tree_selection_select_iter(note_selection, &prev);
 }
 
 void make_temp_dir() {
@@ -307,6 +320,19 @@ void delete_note_from_list(const note& n) {
   if (selected) {
     select_first_note();
   }
+}
+
+void select_note_in_list(const note& n) {
+  if (!n.id()) {
+    return;
+  }
+
+  GtkTreeIter iter;
+  if (!get_iter_for_note_in_list(n, &iter)) {
+    return;
+  }
+
+  gtk_tree_selection_select_iter(note_selection, &iter);
 }
 
 void prepend_note_to_list(const note& n) {
@@ -460,6 +486,7 @@ void on_add_button_clicked() {
 
 void on_search_entry_changed() {
   // TODO(jrubin)
+  // remember to add a secondary icon for clearing the search
   g_warning("on_search_entry_changed");
 }
 
@@ -529,10 +556,12 @@ void done_editing(GPid pid, gint status, gpointer data) {
       db->save_note(&tn->note);
       update_note_in_list(tn->note);
       show_tags_in_list();
+      select_note_in_list(tn->note);
     } else if (!tn->note.value().empty()) {
       db->save_note(&tn->note);
       prepend_note_to_list(tn->note);
       show_tags_in_list();
+      select_note_in_list(tn->note);
     }
   }
 
@@ -543,6 +572,7 @@ void done_editing(GPid pid, gint status, gpointer data) {
 void delete_note(const note& n) {
   delete_note_from_list(n);
   db->delete_note(n);
+  show_tags_in_list();
 }
 
 gboolean on_search_entry_focus_in_event() {

@@ -67,6 +67,8 @@ void        make_temp_dir();
 void        delete_temp_dir();
 void        delete_note(const rubix::note&);
 void        select_first_note();
+void        select_last_note();
+void        select_note_in_list(const rubix::note&);
 void        select_previous_note();
 void        select_next_note();
 void        enable_hotkeys();
