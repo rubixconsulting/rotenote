@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <boost/algorithm/string.hpp>
 
 
 using ::rubix::rote_db;
@@ -31,7 +32,9 @@ GtkToolButton    *refresh_button     = NULL;
 GtkToolButton    *preferences_button = NULL;
 GtkEntry         *search_entry       = NULL;
 GtkTreeView      *note_view          = NULL;
+GtkTreeView      *tag_view           = NULL;
 GtkTreeSelection *note_selection     = NULL;
+GtkTreeSelection *tag_selection      = NULL;
 GtkAccelGroup    *accel_group        = NULL;
 rote_db          *db                 = NULL;
 string           *tmp_dir            = new string();
@@ -41,8 +44,6 @@ int main(int argc, char **argv) {
   GtkWidget        *window         = NULL;
   GtkBuilder       *builder        = NULL;
   GtkTextView      *text_view      = NULL;
-  GtkTreeView      *tag_view       = NULL;
-  GtkTreeSelection *tag_selection  = NULL;
   GError           *error          = NULL;
   stringstream      data;
 
@@ -126,7 +127,7 @@ int main(int argc, char **argv) {
 
   show_notes_in_list(MODIFIED_DESC);
   show_tags_in_list();
-  select_first_note();
+  select_tag_in_list("all");
   enable_hotkeys();
   gtk_widget_show(window);
   gtk_main();
@@ -278,6 +279,25 @@ gboolean get_iter_for_note_in_list(const note& n, GtkTreeIter *iter) {
   return FALSE;
 }
 
+gboolean get_iter_for_tag_in_list(const string& t, GtkTreeIter *iter) {
+  if (t.empty()) {
+    return FALSE;
+  }
+
+  GtkTreeModel *tm = GTK_TREE_MODEL(tag_store);
+  gchar *tag = NULL;
+  gboolean valid = gtk_tree_model_get_iter_first(tm, iter);
+  while (valid) {
+    gtk_tree_model_get(tm, iter, TAG_COLUMN, &tag, -1);
+    if (boost::algorithm::equals(tag, t)) {
+      return TRUE;
+    }
+    valid = gtk_tree_model_iter_next(tm, iter);
+  }
+
+  return FALSE;
+}
+
 void update_note_in_list(const note& n) {
   if (!n.id()) {
     return;
@@ -320,6 +340,22 @@ void delete_note_from_list(const note& n) {
   if (selected) {
     select_first_note();
   }
+}
+
+void select_tag_in_list(const string& t) {
+  if (t.empty()) {
+    return;
+  }
+
+  GtkTreeIter iter;
+  if (!get_iter_for_tag_in_list(t, &iter)) {
+    if (!get_iter_for_tag_in_list("all", &iter)) {
+      return;
+    }
+  }
+
+  gtk_tree_selection_select_iter(tag_selection, &iter);
+  select_first_note();
 }
 
 void select_note_in_list(const note& n) {
@@ -395,6 +431,7 @@ void on_tag_selection_changed(GtkTreeSelection *ts) {
   } else {
     show_notes_in_list(MODIFIED_DESC);
   }
+  select_first_note();
 }
 
 void show_note_in_buffer(const gint& note_id) {
@@ -461,6 +498,11 @@ gboolean selected_note_iter(GtkTreeIter *iter) {
   return gtk_tree_selection_get_selected(ts, NULL, iter);
 }
 
+gboolean selected_tag_iter(GtkTreeIter *iter) {
+  GtkTreeSelection *ts = gtk_tree_view_get_selection(tag_view);
+  return gtk_tree_selection_get_selected(ts, NULL, iter);
+}
+
 note selected_note() {
   GtkTreeIter iter;
   if (!selected_note_iter(&iter)) {
@@ -470,6 +512,17 @@ note selected_note() {
   gint note_id;
   gtk_tree_model_get(tm, &iter, NOTE_ID_COLUMN, &note_id, -1);
   return db->by_id(note_id);
+}
+
+string selected_tag() {
+  GtkTreeIter iter;
+  if (!selected_tag_iter(&iter)) {
+    return string();
+  }
+  GtkTreeModel *tm = GTK_TREE_MODEL(tag_store);
+  gchar *ctag;
+  gtk_tree_model_get(tm, &iter, TAG_COLUMN, &ctag, -1);
+  return ctag;
 }
 
 void on_edit_button_clicked() {
@@ -556,11 +609,13 @@ void done_editing(GPid pid, gint status, gpointer data) {
       db->save_note(&tn->note);
       update_note_in_list(tn->note);
       show_tags_in_list();
+      select_tag_in_list("all");
       select_note_in_list(tn->note);
     } else if (!tn->note.value().empty()) {
       db->save_note(&tn->note);
       prepend_note_to_list(tn->note);
       show_tags_in_list();
+      select_tag_in_list("all");
       select_note_in_list(tn->note);
     }
   }
@@ -572,7 +627,13 @@ void done_editing(GPid pid, gint status, gpointer data) {
 void delete_note(const note& n) {
   delete_note_from_list(n);
   db->delete_note(n);
+
+  note   note = selected_note();
+  string tag  = selected_tag();
+
   show_tags_in_list();
+  select_tag_in_list(tag);
+  select_note_in_list(note);
 }
 
 gboolean on_search_entry_focus_in_event() {
