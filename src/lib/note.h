@@ -10,6 +10,9 @@
 #include "./types.h"
 
 namespace rubix {
+
+#define TAG_ALL "all"
+
 class note {
   public:
     // constructors
