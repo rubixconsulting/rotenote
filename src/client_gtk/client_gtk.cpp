@@ -545,7 +545,6 @@ gboolean on_search_entry_focus_out_event() {
 }
 
 void enable_hotkeys() {
-  g_warning("enabling hotkeys");
   gtk_widget_add_accelerator(GTK_WIDGET(add_button),
                              "clicked",
                              accel_group,
@@ -591,7 +590,6 @@ void enable_hotkeys() {
 }
 
 void disable_hotkeys() {
-  g_warning("disabling hotkeys");
   gtk_widget_remove_accelerator(GTK_WIDGET(add_button),
                                 accel_group,
                                 'a',
