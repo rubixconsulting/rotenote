@@ -427,7 +427,7 @@ notes rote_db::search(const string& condition, const sort& value) const {
   sql  = "SELECT *";
   sql += "  FROM notes";
   if (!condition.empty()) {
-    sql += "  WHERE LOWER(note) LIKE LOWER(?)";
+    sql += "  WHERE LOWER(note) LIKE '%' || LOWER(?) || '%'";
   }
   sql += _order_by(value);
 
