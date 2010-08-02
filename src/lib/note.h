@@ -11,7 +11,16 @@
 
 namespace rubix {
 
-#define TAG_ALL "all"
+#define TAG_ALL "#all"
+#define TAG_DELIM '#'
+
+enum text_type {
+  TEXT_INVALID,
+  TEXT_TITLE,
+  TEXT_PLAIN,
+  TEXT_TAG,
+  TEXT_LINK
+};
 
 class note {
   public:
@@ -25,6 +34,7 @@ class note {
     // methods
     void                            clear();
     void                            write_to_file(const std::string&) const;
+    text_type                       part(std::string::size_type*, std::string*);
     const uint32_t&                 id() const;
     const uint32_t&                 id(const uint32_t&);
     const uint32_t&                 id(const std::string&);

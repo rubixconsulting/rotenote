@@ -8,6 +8,7 @@
 using ::std::string;
 using ::std::istringstream;
 using ::std::runtime_error;
+using ::std::invalid_argument;
 using ::std::ostream;
 using ::std::istream;
 using ::std::ifstream;
@@ -88,24 +89,70 @@ const string& note::value() const {
 const string& note::value(const string& val) {
   __value = val;
 
-  bool found_body = false;
-  bool found_tag  = false;
-  string body, title, tag;
   __tags.clear();
   __tags.insert(TAG_ALL);
-  for (uint32_t i=0; i < val.size(); ++i) {
-    unsigned char j = val[i];
-    if (!found_body) {
-      if (j == '\n') {
-        found_body = true;
-      } else {
-        title += j;
-      }
-      continue;
-    } else if (j == '#') {
-      tag.clear();
-      found_tag = true;
-    } else if (found_tag) {
+  string::size_type iter = 0;
+  string val_part, body;
+  text_type type;
+
+  while ((type = part(&iter, &val_part)) != TEXT_INVALID) {
+    switch (type) {
+      case TEXT_TITLE:
+        _title(val_part);
+        break;
+      case TEXT_PLAIN:
+        body += val_part;
+        break;
+      case TEXT_TAG:
+        body += val_part;
+        __tags.insert(val_part);
+        break;
+      case TEXT_LINK:
+        body += val_part;
+        break;
+      default:
+        throw runtime_error("invalid text_type");
+    }
+  }
+
+  _body(body);
+
+  _modified(_now());
+  return value();
+}
+
+text_type note::part(string::size_type *iter, string *out) {
+  if (!iter || !out) {
+    throw invalid_argument("note::part iter or val is null");
+  }
+
+  out->clear();
+  string cur = value();
+
+  if (*iter >= cur.size()) {
+    *iter = cur.size();
+    return TEXT_INVALID;
+  }
+
+  string::size_type title_end = cur.find_first_of("\n");
+
+  if (*iter < title_end) {
+    *out  = cur.substr(*iter, title_end);
+    *iter = title_end;
+    return TEXT_TITLE;
+  }
+
+  text_type type = TEXT_PLAIN;
+
+  if (cur[*iter] == TAG_DELIM) {
+    type = TEXT_TAG;
+    *out += TAG_DELIM;
+    ++(*iter);
+  }
+
+  while (*iter < cur.size()) {
+    const unsigned char& j = cur[*iter];
+    if (type == TEXT_TAG) {
       switch (j) {
         case '.':
         case ' ':
@@ -113,21 +160,16 @@ const string& note::value(const string& val) {
         case '\r':
         case '\n':
         case '\f':
-          found_tag = false;
-          __tags.insert(tag);
-          break;
-        default:
-          tag += j;
+          return type;
       }
-    } else {
-      body += j;
+    } else if (j == TAG_DELIM) {
+      break;
     }
+    *out += j;
+    ++(*iter);
   }
-  _title(title);
-  _body(body);
 
-  _modified(_now());
-  return value();
+  return type;
 }
 
 const boost::posix_time::ptime& note::created() const {
