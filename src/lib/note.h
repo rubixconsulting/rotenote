@@ -11,8 +11,9 @@
 
 namespace rubix {
 
-#define TAG_ALL "#all"
-#define TAG_DELIM '#'
+#define TAG_ALL       "#all"
+#define TAG_DELIM     '#'
+#define TWITTER_DELIM '@'
 
 enum text_type {
   TEXT_INVALID,
@@ -23,7 +24,8 @@ enum text_type {
   TEXT_TAG,
   TEXT_LINK,
   TEXT_LINK_DEFAULT_HTTP,
-  TEXT_EMAIL
+  TEXT_EMAIL,
+  TEXT_TWITTER
 };
 
 class note {

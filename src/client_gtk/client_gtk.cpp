@@ -29,6 +29,7 @@ using ::rubix::TEXT_TAG;
 using ::rubix::TEXT_LINK;
 using ::rubix::TEXT_LINK_DEFAULT_HTTP;
 using ::rubix::TEXT_EMAIL;
+using ::rubix::TEXT_TWITTER;
 
 GtkListStore     *note_store            = NULL;
 GtkListStore     *tag_store             = NULL;
@@ -48,6 +49,7 @@ GtkTextTag       *tag_tag               = NULL;
 GtkTextTag       *link_tag              = NULL;
 GtkTextTag       *link_default_http_tag = NULL;
 GtkTextTag       *email_tag             = NULL;
+GtkTextTag       *twitter_tag           = NULL;
 GtkAccelGroup    *accel_group           = NULL;
 rote_db          *db                    = NULL;
 string           *tmp_dir               = new string();
@@ -95,6 +97,7 @@ int main(int argc, char **argv) {
   link_tag              = gtk_text_tag_new("link_tag");
   link_default_http_tag = gtk_text_tag_new("link_default_http_tag");
   email_tag             = gtk_text_tag_new("email_tag");
+  twitter_tag           = gtk_text_tag_new("twitter_tag");
 
   g_object_set(title_tag, "weight", PANGO_WEIGHT_BOLD,    "weight-set", TRUE, NULL);
   g_object_set(title_tag, "scale",  PANGO_SCALE_XX_LARGE, "scale-set",  TRUE, NULL);
@@ -115,11 +118,16 @@ int main(int argc, char **argv) {
   g_object_set(email_tag, "underline", PANGO_UNDERLINE_SINGLE, "underline-set", TRUE, NULL);
   g_signal_connect(G_OBJECT(email_tag), "event", G_CALLBACK(on_tag_event), NULL);
 
+  g_object_set(twitter_tag, "style",     PANGO_STYLE_ITALIC,     "style-set",     TRUE, NULL);
+  g_object_set(twitter_tag, "underline", PANGO_UNDERLINE_SINGLE, "underline-set", TRUE, NULL);
+  g_signal_connect(G_OBJECT(twitter_tag), "event", G_CALLBACK(on_tag_event), NULL);
+
   gtk_text_tag_table_add(tag_table, title_tag);
   gtk_text_tag_table_add(tag_table, tag_tag);
   gtk_text_tag_table_add(tag_table, link_tag);
   gtk_text_tag_table_add(tag_table, link_default_http_tag);
   gtk_text_tag_table_add(tag_table, email_tag);
+  gtk_text_tag_table_add(tag_table, twitter_tag);
 
   note_selection = gtk_tree_view_get_selection(note_view);
   gtk_tree_selection_set_mode(note_selection, GTK_SELECTION_SINGLE);
@@ -505,6 +513,9 @@ void show_note_in_buffer(const gint& note_id) {
         break;
       case TEXT_EMAIL:
         append_tag_text_to_buffer(val_part, email_tag);
+        break;
+      case TEXT_TWITTER:
+        append_tag_text_to_buffer(val_part, twitter_tag);
         break;
       default:
         append_text_to_buffer(val_part);
@@ -910,17 +921,22 @@ void click_tag(const GtkTextIter *iter, GtkTextTag *tag) {
     }
   } else if (tag == link_default_http_tag) {
     GError *error = NULL;
-    text = "http:"+text;
+    text = HTTP_SCHEME+text;
     if (!gtk_show_uri(NULL, text.c_str(), gtk_get_current_event_time(), &error)) {
       g_warning("could not open link \"%s\" -- %s", text.c_str(), error->message);
     }
   } else if (tag == email_tag) {
     GError *error = NULL;
-    text = "mailto:"+text;
+    text = MAILTO_SCHEME+text;
     if (!gtk_show_uri(NULL, text.c_str(), gtk_get_current_event_time(), &error)) {
       g_warning("could not open email \"%s\" -- %s", text.c_str(), error->message);
     }
-
+  } else if (tag == twitter_tag) {
+    GError *error = NULL;
+    text = TWITTER_URL+text.substr(1);
+    if (!gtk_show_uri(NULL, text.c_str(), gtk_get_current_event_time(), &error)) {
+      g_warning("could not open email \"%s\" -- %s", text.c_str(), error->message);
+    }
   }
 }
 
@@ -963,6 +979,8 @@ gboolean on_text_view_motion_notify_event(GtkWidget *text_view, GdkEventMotion *
   } else if (gtk_text_iter_has_tag(&iter, link_default_http_tag)) {
     cursor = gdk_cursor_new(GDK_HAND2);
   } else if (gtk_text_iter_has_tag(&iter, email_tag)) {
+    cursor = gdk_cursor_new(GDK_HAND2);
+  } else if (gtk_text_iter_has_tag(&iter, twitter_tag)) {
     cursor = gdk_cursor_new(GDK_HAND2);
   }
   gdk_window_set_cursor(event->window, cursor);

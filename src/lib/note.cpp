@@ -206,6 +206,8 @@ text_type note::_token(const string& str,
 
   if ((*out)[0] == TAG_DELIM) {
     return TEXT_TAG;
+  } else if ((*out)[0] == TWITTER_DELIM) {
+    return TEXT_TWITTER;
   } else if (regex_match(*out, link_regex)) {
     return TEXT_LINK;
   } else if (regex_match(*out, link_default_http_regex)) {

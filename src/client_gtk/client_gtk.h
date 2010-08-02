@@ -12,6 +12,9 @@
 #define DB_NAME           "rotedb"
 #define GLADE_FILE        "client_gtk.glade"
 #define VIM_EDITOR        "rgvim"
+#define HTTP_SCHEME       "http://"
+#define MAILTO_SCHEME     "mailto:"
+#define TWITTER_URL       HTTP_SCHEME "twitter.com/"
 
 #define MAX_TITLE_LENGTH 40
 #define MAX_BODY_LENGTH  40
