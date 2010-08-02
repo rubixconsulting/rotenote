@@ -15,11 +15,19 @@
 using ::std::string;
 using ::std::ifstream;
 using ::std::stringstream;
+using ::std::runtime_error;
 using ::rubix::rote_db;
 using ::rubix::note;
 using ::rubix::notes;
 using ::rubix::tags;
 using ::rubix::MODIFIED_DESC;
+using ::rubix::text_type;
+using ::rubix::TEXT_INVALID;
+using ::rubix::TEXT_TITLE;
+using ::rubix::TEXT_PLAIN;
+using ::rubix::TEXT_TAG;
+using ::rubix::TEXT_LINK;
+using ::rubix::TEXT_EMAIL;
 
 GtkListStore     *note_store         = NULL;
 GtkListStore     *tag_store          = NULL;
@@ -34,17 +42,22 @@ GtkTreeView      *note_view          = NULL;
 GtkTreeView      *tag_view           = NULL;
 GtkTreeSelection *note_selection     = NULL;
 GtkTreeSelection *tag_selection      = NULL;
+GtkTextTag       *title_tag          = NULL;
+GtkTextTag       *tag_tag            = NULL;
+GtkTextTag       *link_tag           = NULL;
+GtkTextTag       *email_tag          = NULL;
 GtkAccelGroup    *accel_group        = NULL;
 rote_db          *db                 = NULL;
 string           *tmp_dir            = new string();
 uint32_t          new_note_id        = 0;
 
 int main(int argc, char **argv) {
-  GtkWidget        *window         = NULL;
-  GtkBuilder       *builder        = NULL;
-  GtkTextView      *text_view      = NULL;
-  GError           *error          = NULL;
-  stringstream      data;
+  GtkWidget       *window    = NULL;
+  GtkBuilder      *builder   = NULL;
+  GtkTextView     *text_view = NULL;
+  GtkTextTagTable *tag_table = NULL;
+  GError          *error     = NULL;
+  stringstream  data;
 
   db = new rote_db(dbfile());
 
@@ -73,6 +86,32 @@ int main(int argc, char **argv) {
   search_entry       = GTK_ENTRY(gtk_builder_get_object(builder, "search_entry"));
 
   buffer = gtk_text_view_get_buffer(text_view);
+  tag_table = gtk_text_buffer_get_tag_table(buffer);
+
+  title_tag = gtk_text_tag_new("title_tag");
+  tag_tag   = gtk_text_tag_new("tag_tag");
+  link_tag  = gtk_text_tag_new("link_tag");
+  email_tag = gtk_text_tag_new("email_tag");
+
+  g_object_set(title_tag, "weight", PANGO_WEIGHT_BOLD,    "weight-set", TRUE, NULL);
+  g_object_set(title_tag, "scale",  PANGO_SCALE_XX_LARGE, "scale-set",  TRUE, NULL);
+
+  g_object_set(tag_tag, "style",     PANGO_STYLE_ITALIC,     "style-set",     TRUE, NULL);
+  g_object_set(tag_tag, "underline", PANGO_UNDERLINE_SINGLE, "underline-set", TRUE, NULL);
+  g_signal_connect(G_OBJECT(tag_tag), "event", G_CALLBACK(on_tag_event), NULL);
+
+  g_object_set(link_tag, "style",     PANGO_STYLE_ITALIC,     "style-set",     TRUE, NULL);
+  g_object_set(link_tag, "underline", PANGO_UNDERLINE_SINGLE, "underline-set", TRUE, NULL);
+  g_signal_connect(G_OBJECT(link_tag), "event", G_CALLBACK(on_tag_event), NULL);
+
+  g_object_set(email_tag, "style",     PANGO_STYLE_ITALIC,     "style-set",     TRUE, NULL);
+  g_object_set(email_tag, "underline", PANGO_UNDERLINE_SINGLE, "underline-set", TRUE, NULL);
+  g_signal_connect(G_OBJECT(email_tag), "event", G_CALLBACK(on_tag_event), NULL);
+
+  gtk_text_tag_table_add(tag_table, title_tag);
+  gtk_text_tag_table_add(tag_table, tag_tag);
+  gtk_text_tag_table_add(tag_table, link_tag);
+  gtk_text_tag_table_add(tag_table, email_tag);
 
   note_selection = gtk_tree_view_get_selection(note_view);
   gtk_tree_selection_set_mode(note_selection, GTK_SELECTION_SINGLE);
@@ -213,11 +252,6 @@ string dbfile() {
   stringstream ss;
   ss << home << "/." << DB_NAME;
   return ss.str();
-}
-
-string format_note_for_buffer(const note& n) {
-  // TODO(jrubin)
-  return n.value();
 }
 
 string format_note_for_list(const note& n) {
@@ -442,9 +476,51 @@ string search_text() {
 }
 
 void show_note_in_buffer(const gint& note_id) {
-  note n = db->by_id(note_id);
-  string text = format_note_for_buffer(n);
-  gtk_text_buffer_set_text(buffer, text.c_str(), text.size());
+  const note n = db->by_id(note_id);
+  clear_buffer();
+  string::size_type iter = 0;
+  string val_part;
+  text_type type;
+  while ((type = n.part(&iter, &val_part)) != TEXT_INVALID) {
+    switch (type) {
+      case TEXT_TITLE:
+        append_tag_text_to_buffer(val_part, title_tag);
+        break;
+      case TEXT_TAG:
+        append_tag_text_to_buffer(val_part, tag_tag);
+        break;
+      case TEXT_LINK:
+        append_tag_text_to_buffer(val_part, link_tag);
+        break;
+      case TEXT_EMAIL:
+        append_tag_text_to_buffer(val_part, email_tag);
+        break;
+      default:
+        append_text_to_buffer(val_part);
+    }
+  }
+}
+
+void append_text_to_buffer(const std::string& val) {
+  GtkTextIter iter;
+  gtk_text_buffer_get_end_iter(buffer, &iter);
+  gtk_text_buffer_insert(buffer, &iter, val.c_str(), -1);
+}
+
+void append_tag_text_to_buffer(const std::string& val, GtkTextTag *tag) {
+  GtkTextMark *start_mark = NULL;
+  GtkTextIter start, end;
+
+  gtk_text_buffer_get_end_iter(buffer, &start);
+
+  start_mark = gtk_text_buffer_create_mark(buffer, NULL, &start, true);
+
+  append_text_to_buffer(val);
+
+  gtk_text_buffer_get_end_iter(buffer, &end);
+  gtk_text_buffer_get_iter_at_mark(buffer, &start, start_mark);
+  gtk_text_buffer_apply_tag(buffer, tag, &start, &end);
+  gtk_text_buffer_delete_mark(buffer, start_mark);
 }
 
 void clear_buffer() {
@@ -586,7 +662,7 @@ void on_search_entry_changed() {
   }
 }
 
-void on_search_entry_icon_release(GtkEntry *entry, GtkEntryIconPosition pos) {
+void on_search_entry_icon_release(__attribute__((unused))GtkEntry *entry, GtkEntryIconPosition pos) {
   switch (pos) {
     case GTK_ENTRY_ICON_PRIMARY:
       deselect_tag_in_list();
@@ -667,7 +743,7 @@ GPid edit_note(const note& n) {
   return pid;
 }
 
-void done_editing(GPid pid, gint status, gpointer data) {
+void done_editing(GPid pid, __attribute__((unused))gint status, gpointer data) {
   tmp_note *tn = (tmp_note*)data;
 
   struct stat buf;
@@ -790,6 +866,88 @@ void disable_hotkeys() {
                                 accel_group,
                                 'k',
                                 (GdkModifierType)0);
+}
+
+gboolean on_tag_event(GtkTextTag *tag,
+                      __attribute__((unused))GObject *object,
+                      GdkEvent *event,
+                      GtkTextIter *iter) {
+  switch (event->type) {
+    case GDK_MOTION_NOTIFY:
+      // TODO
+      break;
+    case GDK_BUTTON_RELEASE:
+      click_tag(iter, tag);
+      // TODO
+      break;
+    default:
+      break;
+  }
+
+  return FALSE;
+}
+
+void click_tag(const GtkTextIter *iter, GtkTextTag *tag) {
+  string text = get_tag_text(iter, tag);
+
+  if (tag == tag_tag) {
+    select_tag_in_list(text);
+  } else if (tag == link_tag) {
+    GError *error = NULL;
+    if (!gtk_show_uri(NULL, text.c_str(), gtk_get_current_event_time(), &error)) {
+      g_warning("could not open link \"%s\" -- %s", text.c_str(), error->message);
+    }
+  } else if (tag == email_tag) {
+    GError *error = NULL;
+    text = "mailto:"+text;
+    if (!gtk_show_uri(NULL, text.c_str(), gtk_get_current_event_time(), &error)) {
+      g_warning("could not open email \"%s\" -- %s", text.c_str(), error->message);
+    }
+
+  }
+}
+
+string get_tag_text(const GtkTextIter *iter, GtkTextTag *tag) {
+  if (gtk_text_iter_toggles_tag(iter, tag)) {
+    return "";
+  }
+
+  GtkTextIter begin = *iter;
+  GtkTextIter end   = *iter;
+
+  while (gtk_text_iter_begins_tag(&begin, tag) == false) {
+    gtk_text_iter_backward_char(&begin);
+  }
+
+  while (gtk_text_iter_ends_tag(&end, tag) == false) {
+    gtk_text_iter_forward_char(&end);
+  }
+
+  return gtk_text_iter_get_text(&begin, &end);
+}
+
+gboolean on_text_view_motion_notify_event(GtkWidget *text_view, GdkEventMotion *event) {
+  gint x = 0;
+  gint y = 0;
+  GtkTextIter iter;
+  gtk_text_view_window_to_buffer_coords(GTK_TEXT_VIEW(text_view),
+                                        GTK_TEXT_WINDOW_WIDGET,
+                                        event->x,
+                                        event->y,
+                                        &x,
+                                        &y);
+  gtk_text_view_get_iter_at_location(GTK_TEXT_VIEW(text_view), &iter, x, y);
+  gdk_window_get_pointer(event->window, 0, 0, 0);
+  GdkCursor *cursor = gdk_cursor_new(GDK_XTERM);
+  if (gtk_text_iter_has_tag(&iter, tag_tag)) {
+    cursor = gdk_cursor_new(GDK_HAND2);
+  } else if (gtk_text_iter_has_tag(&iter, link_tag)) {
+    cursor = gdk_cursor_new(GDK_HAND2);
+  } else if (gtk_text_iter_has_tag(&iter, email_tag)) {
+    cursor = gdk_cursor_new(GDK_HAND2);
+  }
+  gdk_window_set_cursor(event->window, cursor);
+  return FALSE;
 }
 
 // vim: textwidth=80:wrap:expandtab:tabstop=2:formatoptions=croqlt:shiftwidth=2
