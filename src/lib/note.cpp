@@ -4,6 +4,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <boost/regex.hpp>
 
 using ::std::string;
 using ::std::istringstream;
@@ -13,8 +14,22 @@ using ::std::ostream;
 using ::std::istream;
 using ::std::ifstream;
 using ::std::ofstream;
+using ::boost::regex;
+using ::boost::regex_match;
+using ::boost::regex_constants::icase;
 
 namespace rubix {
+#define USERCHARS "-[:alnum:]"
+#define USERCHARS_CLASS "[" USERCHARS "]"
+#define PASSCHARS_CLASS "[-[:alnum:]\\Q,?;.:/!%$^*&~\"#'\\E]"
+#define HOSTCHARS_CLASS "[-[:alnum:]]"
+#define HOST HOSTCHARS_CLASS "+(\\." HOSTCHARS_CLASS "+)*"
+#define PORT "(?:\\:[[:digit:]]{1,5})?"
+#define PATHCHARS_CLASS "[-[:alnum:]\\Q_$.+!*,;@&=?/~#%\\E]"
+#define SCHEME "(?:news:|telnet:|nntp:|file:\\/|https?:|ftps?:|webcal:)"
+#define USERPASS USERCHARS_CLASS "+(?:" PASSCHARS_CLASS "+)?"
+#define URLPATH   "(?:(/"PATHCHARS_CLASS"+(?:[(]"PATHCHARS_CLASS"*[)])*"PATHCHARS_CLASS"*)*)?"
+
 note::note() {
   _init();
 }
@@ -92,13 +107,16 @@ const string& note::value(const string& val) {
   __tags.clear();
   __tags.insert(TAG_ALL);
   string::size_type iter = 0;
-  string val_part, body;
+  string val_part, title, body;
   text_type type;
 
   while ((type = part(&iter, &val_part)) != TEXT_INVALID) {
     switch (type) {
       case TEXT_TITLE:
-        _title(val_part);
+        title += val_part;
+        break;
+      case TEXT_SEPARATOR_TITLE:
+        title += val_part;
         break;
       case TEXT_TAG:
         body += val_part;
@@ -110,6 +128,7 @@ const string& note::value(const string& val) {
   }
 
   _body(body);
+  _title(title);
 
   _modified(_now());
   return value();
@@ -120,50 +139,106 @@ text_type note::part(string::size_type *iter, string *out) const {
     throw invalid_argument("note::part iter or val is null");
   }
 
-  out->clear();
-  string cur = value();
+  string str = value();
 
-  if (*iter >= cur.size()) {
-    *iter = cur.size();
+  text_type default_type      = TEXT_PLAIN;
+  text_type default_separator = TEXT_SEPARATOR_PLAIN;
+
+  // find the first newline
+  string::size_type title_end = str.find_first_of("\n");
+
+  if ((title_end == string::npos) || (*iter < title_end)) {
+    // there was no newline, so the whole thing is the title
+    // or the iterator was before the first newline
+    default_type      = TEXT_TITLE;
+    default_separator = TEXT_SEPARATOR_TITLE;
+  }
+
+  text_type type = _token(str, default_type, default_separator, iter, out);
+
+  return type;
+}
+
+text_type note::_token(const string& str,
+                       const text_type& default_type,
+                       const text_type& default_separator,
+                       string::size_type *iter,
+                       string *out) const {
+  if (!iter || !out) {
+    throw invalid_argument("note::_token iter or val is null");
+  }
+
+  out->clear();
+  const string::size_type begin = *iter;
+
+  if (str.empty() || (*iter >= str.size())) {
+    *iter = str.size();
     return TEXT_INVALID;
   }
 
-  string::size_type title_end = cur.find_first_of("\n");
+  bool is_separator = _is_separator(str.substr(begin));
 
-  if (*iter < title_end) {
-    *out  = cur.substr(*iter, title_end);
-    *iter = title_end;
-    return TEXT_TITLE;
+  if (str.size() == 1) {
+    *out = str;
+    if (is_separator) {
+      return default_separator;
+    }
+    return default_type;
   }
 
-  text_type type = TEXT_PLAIN;
+  ++(*iter);
 
-  if (cur[*iter] == TAG_DELIM) {
-    type = TEXT_TAG;
-    *out += TAG_DELIM;
-    ++(*iter);
-  }
-
-  while (*iter < cur.size()) {
-    const unsigned char& j = cur[*iter];
-    if (type == TEXT_TAG) {
-      switch (j) {
-        case '.':
-        case ' ':
-        case '\t':
-        case '\r':
-        case '\n':
-        case '\f':
-          return type;
-      }
-    } else if (j == TAG_DELIM) {
+  while (*iter < str.size()) {
+    if (is_separator && !_is_separator(str.substr(*iter))) {
+      *out = str.substr(begin, (*iter-begin));
+      return default_separator;
+    } else if (!is_separator && _is_separator(str.substr(*iter))) {
       break;
     }
-    *out += j;
     ++(*iter);
   }
 
-  return type;
+  *out = str.substr(begin, (*iter-begin));
+
+  static regex link_regex(SCHEME "//(?:" USERPASS "\\@)?" HOST PORT URLPATH, icase);
+  static regex link_default_http_regex("(?:www|ftp)" HOSTCHARS_CLASS "*\\." HOST PORT URLPATH, icase);
+  static regex email_regex("(?:mailto:)?" USERCHARS_CLASS "[" USERCHARS ".]*\\@" HOSTCHARS_CLASS "+\\." HOST, icase);
+
+  if ((*out)[0] == TAG_DELIM) {
+    return TEXT_TAG;
+  } else if (regex_match(*out, link_regex)) {
+    return TEXT_LINK;
+  } else if (regex_match(*out, link_default_http_regex)) {
+    return TEXT_LINK_DEFAULT_HTTP;
+  } else if (regex_match(*out, email_regex)) {
+    return TEXT_EMAIL;
+  }
+
+  return default_type;
+}
+
+bool note::_is_separator(const string& str) const {
+  if (str.empty()) {
+    return false;
+  }
+
+  const unsigned char& j = str[0];
+
+  switch (j) {
+    case ' ':
+    case '\t':
+    case '\r':
+    case '\n':
+    case '\f':
+      return true;
+    case '.':
+      if (str.size() == 1) {
+        return true;
+      }
+      return _is_separator(str.substr(1));
+  }
+
+  return false;
 }
 
 const boost::posix_time::ptime& note::created() const {

@@ -17,9 +17,12 @@ namespace rubix {
 enum text_type {
   TEXT_INVALID,
   TEXT_TITLE,
+  TEXT_SEPARATOR_TITLE,
   TEXT_PLAIN,
+  TEXT_SEPARATOR_PLAIN,
   TEXT_TAG,
   TEXT_LINK,
+  TEXT_LINK_DEFAULT_HTTP,
   TEXT_EMAIL
 };
 
@@ -60,6 +63,12 @@ class note {
 
     // methods
     void                            _init();
+    bool                            _is_separator(const std::string&) const;
+    text_type                       _token(const std::string&,
+                                           const text_type&,
+                                           const text_type&,
+                                           std::string::size_type*,
+                                           std::string*) const;
     const std::string&              _title(const std::string&);
     const std::string&              _body(const std::string&);
     boost::posix_time::ptime        _now() const;
