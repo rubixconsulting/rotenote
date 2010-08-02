@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
 
   cout << "number of notes: " << db.num_notes() << "\n";
 
-  db.delete_note(&test);
+  db.delete_note(test);
 
   cout << "number of notes: " << db.num_notes() << "\n";
 
