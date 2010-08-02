@@ -100,18 +100,12 @@ const string& note::value(const string& val) {
       case TEXT_TITLE:
         _title(val_part);
         break;
-      case TEXT_PLAIN:
-        body += val_part;
-        break;
       case TEXT_TAG:
         body += val_part;
         __tags.insert(val_part);
         break;
-      case TEXT_LINK:
-        body += val_part;
-        break;
       default:
-        throw runtime_error("invalid text_type");
+        body += val_part;
     }
   }
 
@@ -121,7 +115,7 @@ const string& note::value(const string& val) {
   return value();
 }
 
-text_type note::part(string::size_type *iter, string *out) {
+text_type note::part(string::size_type *iter, string *out) const {
   if (!iter || !out) {
     throw invalid_argument("note::part iter or val is null");
   }
