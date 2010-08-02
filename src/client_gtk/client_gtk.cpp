@@ -27,29 +27,31 @@ using ::rubix::TEXT_TITLE;
 using ::rubix::TEXT_PLAIN;
 using ::rubix::TEXT_TAG;
 using ::rubix::TEXT_LINK;
+using ::rubix::TEXT_LINK_DEFAULT_HTTP;
 using ::rubix::TEXT_EMAIL;
 
-GtkListStore     *note_store         = NULL;
-GtkListStore     *tag_store          = NULL;
-GtkTextBuffer    *buffer             = NULL;
-GtkToolButton    *add_button         = NULL;
-GtkToolButton    *edit_button        = NULL;
-GtkToolButton    *delete_button      = NULL;
-GtkToolButton    *refresh_button     = NULL;
-GtkToolButton    *preferences_button = NULL;
-GtkEntry         *search_entry       = NULL;
-GtkTreeView      *note_view          = NULL;
-GtkTreeView      *tag_view           = NULL;
-GtkTreeSelection *note_selection     = NULL;
-GtkTreeSelection *tag_selection      = NULL;
-GtkTextTag       *title_tag          = NULL;
-GtkTextTag       *tag_tag            = NULL;
-GtkTextTag       *link_tag           = NULL;
-GtkTextTag       *email_tag          = NULL;
-GtkAccelGroup    *accel_group        = NULL;
-rote_db          *db                 = NULL;
-string           *tmp_dir            = new string();
-uint32_t          new_note_id        = 0;
+GtkListStore     *note_store            = NULL;
+GtkListStore     *tag_store             = NULL;
+GtkTextBuffer    *buffer                = NULL;
+GtkToolButton    *add_button            = NULL;
+GtkToolButton    *edit_button           = NULL;
+GtkToolButton    *delete_button         = NULL;
+GtkToolButton    *refresh_button        = NULL;
+GtkToolButton    *preferences_button    = NULL;
+GtkEntry         *search_entry          = NULL;
+GtkTreeView      *note_view             = NULL;
+GtkTreeView      *tag_view              = NULL;
+GtkTreeSelection *note_selection        = NULL;
+GtkTreeSelection *tag_selection         = NULL;
+GtkTextTag       *title_tag             = NULL;
+GtkTextTag       *tag_tag               = NULL;
+GtkTextTag       *link_tag              = NULL;
+GtkTextTag       *link_default_http_tag = NULL;
+GtkTextTag       *email_tag             = NULL;
+GtkAccelGroup    *accel_group           = NULL;
+rote_db          *db                    = NULL;
+string           *tmp_dir               = new string();
+uint32_t          new_note_id           = 0;
 
 int main(int argc, char **argv) {
   GtkWidget       *window    = NULL;
@@ -88,10 +90,11 @@ int main(int argc, char **argv) {
   buffer = gtk_text_view_get_buffer(text_view);
   tag_table = gtk_text_buffer_get_tag_table(buffer);
 
-  title_tag = gtk_text_tag_new("title_tag");
-  tag_tag   = gtk_text_tag_new("tag_tag");
-  link_tag  = gtk_text_tag_new("link_tag");
-  email_tag = gtk_text_tag_new("email_tag");
+  title_tag             = gtk_text_tag_new("title_tag");
+  tag_tag               = gtk_text_tag_new("tag_tag");
+  link_tag              = gtk_text_tag_new("link_tag");
+  link_default_http_tag = gtk_text_tag_new("link_default_http_tag");
+  email_tag             = gtk_text_tag_new("email_tag");
 
   g_object_set(title_tag, "weight", PANGO_WEIGHT_BOLD,    "weight-set", TRUE, NULL);
   g_object_set(title_tag, "scale",  PANGO_SCALE_XX_LARGE, "scale-set",  TRUE, NULL);
@@ -104,6 +107,10 @@ int main(int argc, char **argv) {
   g_object_set(link_tag, "underline", PANGO_UNDERLINE_SINGLE, "underline-set", TRUE, NULL);
   g_signal_connect(G_OBJECT(link_tag), "event", G_CALLBACK(on_tag_event), NULL);
 
+  g_object_set(link_default_http_tag, "style",     PANGO_STYLE_ITALIC,     "style-set",     TRUE, NULL);
+  g_object_set(link_default_http_tag, "underline", PANGO_UNDERLINE_SINGLE, "underline-set", TRUE, NULL);
+  g_signal_connect(G_OBJECT(link_default_http_tag), "event", G_CALLBACK(on_tag_event), NULL);
+
   g_object_set(email_tag, "style",     PANGO_STYLE_ITALIC,     "style-set",     TRUE, NULL);
   g_object_set(email_tag, "underline", PANGO_UNDERLINE_SINGLE, "underline-set", TRUE, NULL);
   g_signal_connect(G_OBJECT(email_tag), "event", G_CALLBACK(on_tag_event), NULL);
@@ -111,6 +118,7 @@ int main(int argc, char **argv) {
   gtk_text_tag_table_add(tag_table, title_tag);
   gtk_text_tag_table_add(tag_table, tag_tag);
   gtk_text_tag_table_add(tag_table, link_tag);
+  gtk_text_tag_table_add(tag_table, link_default_http_tag);
   gtk_text_tag_table_add(tag_table, email_tag);
 
   note_selection = gtk_tree_view_get_selection(note_view);
@@ -491,6 +499,9 @@ void show_note_in_buffer(const gint& note_id) {
         break;
       case TEXT_LINK:
         append_tag_text_to_buffer(val_part, link_tag);
+        break;
+      case TEXT_LINK_DEFAULT_HTTP:
+        append_tag_text_to_buffer(val_part, link_default_http_tag);
         break;
       case TEXT_EMAIL:
         append_tag_text_to_buffer(val_part, email_tag);
@@ -897,6 +908,12 @@ void click_tag(const GtkTextIter *iter, GtkTextTag *tag) {
     if (!gtk_show_uri(NULL, text.c_str(), gtk_get_current_event_time(), &error)) {
       g_warning("could not open link \"%s\" -- %s", text.c_str(), error->message);
     }
+  } else if (tag == link_default_http_tag) {
+    GError *error = NULL;
+    text = "http:"+text;
+    if (!gtk_show_uri(NULL, text.c_str(), gtk_get_current_event_time(), &error)) {
+      g_warning("could not open link \"%s\" -- %s", text.c_str(), error->message);
+    }
   } else if (tag == email_tag) {
     GError *error = NULL;
     text = "mailto:"+text;
@@ -942,6 +959,8 @@ gboolean on_text_view_motion_notify_event(GtkWidget *text_view, GdkEventMotion *
   if (gtk_text_iter_has_tag(&iter, tag_tag)) {
     cursor = gdk_cursor_new(GDK_HAND2);
   } else if (gtk_text_iter_has_tag(&iter, link_tag)) {
+    cursor = gdk_cursor_new(GDK_HAND2);
+  } else if (gtk_text_iter_has_tag(&iter, link_default_http_tag)) {
     cursor = gdk_cursor_new(GDK_HAND2);
   } else if (gtk_text_iter_has_tag(&iter, email_tag)) {
     cursor = gdk_cursor_new(GDK_HAND2);

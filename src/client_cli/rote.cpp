@@ -19,8 +19,9 @@ int main(int argc, char **argv) {
 
   note test;
   // sleep(2);
-  test.value("this is the title\nthis is the body of the first note");
-  db.save_note(&test);
+  //test.value("this is the title\nthis is the body of the first note");
+  test.value("1 2\n34 56\n#tag1");
+  // db.save_note(&test);
 
   cout << "test:\n";
   cout << "  id: " << test.id() << "\n";
@@ -32,7 +33,7 @@ int main(int argc, char **argv) {
 
   cout << "number of notes: " << db.num_notes() << "\n";
 
-  db.delete_note(test);
+  // db.delete_note(test);
 
   cout << "number of notes: " << db.num_notes() << "\n";
 
