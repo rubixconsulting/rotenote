@@ -26,7 +26,8 @@
     <property name="title" translatable="yes">Rote Notes</property>
     <property name="default_width">800</property>
     <property name="default_height">600</property>
-    <signal name="destroy" handler="on_main_window_destroy"/>
+    <signal name="key_press_event" handler="on_main_window_key_press_event"/>
+    <signal name="delete_event" handler="on_main_window_delete_event"/>
     <child>
       <object class="GtkVBox" id="main_vbox">
         <property name="visible">True</property>

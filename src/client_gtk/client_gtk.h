@@ -45,10 +45,11 @@ void     on_add_button_clicked();
 void     on_search_entry_changed();
 void     on_search_entry_icon_release(GtkEntry*, GtkEntryIconPosition);
 void     on_search_entry_activate();
-void     on_main_window_destroy();
+gboolean on_main_window_delete_event();
 gboolean on_search_entry_focus_in_event();
 gboolean on_search_entry_focus_out_event();
 gboolean on_text_view_motion_notify_event(GtkWidget*, GdkEventMotion*);
+gboolean on_main_window_key_press_event(GtkWidget*, GdkEventKey*);
 }
 
 void        done_editing(GPid, gint, gpointer);
@@ -69,6 +70,11 @@ void        on_note_selection_changed(GtkTreeSelection*);
 void        on_tag_selection_changed(GtkTreeSelection*);
 void        on_note_select_previous();
 void        on_note_select_next();
+void        on_tray_quit_activate();
+void        on_tray_show_activate();
+void        on_tray_add_activate();
+void        on_tray_icon_activate();
+void        on_tray_icon_popup_menu(GtkStatusIcon*, guint, guint);
 void        make_temp_dir();
 void        delete_temp_dir();
 void        delete_note(const rubix::note&);

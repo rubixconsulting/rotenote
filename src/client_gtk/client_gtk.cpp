@@ -51,16 +51,22 @@ GtkTextTag       *link_default_http_tag = NULL;
 GtkTextTag       *email_tag             = NULL;
 GtkTextTag       *twitter_tag           = NULL;
 GtkAccelGroup    *accel_group           = NULL;
+GtkStatusIcon    *tray_icon             = NULL;
+GtkMenu          *tray_menu             = NULL;
 rote_db          *db                    = NULL;
+GtkWindow        *window                = NULL;
+gboolean          window_shown          = TRUE;
 string           *tmp_dir               = new string();
 uint32_t          new_note_id           = 0;
 
 int main(int argc, char **argv) {
-  GtkWidget       *window    = NULL;
   GtkBuilder      *builder   = NULL;
   GtkTextView     *text_view = NULL;
   GtkTextTagTable *tag_table = NULL;
   GError          *error     = NULL;
+  GtkWidget       *tray_quit = NULL;
+  GtkWidget       *tray_add  = NULL;
+  GtkWidget       *tray_show = NULL;
   stringstream  data;
 
   db = new rote_db(dbfile());
@@ -71,12 +77,10 @@ int main(int argc, char **argv) {
 
   builder = gtk_builder_new();
   if (!gtk_builder_add_from_file(builder, GLADE_FILE, &error)) {
-    g_warning("%s", error->message);
-    g_free(error);
-    return EXIT_FAILURE;
+    g_error("%s", error->message);
   }
 
-  window             = GTK_WIDGET(gtk_builder_get_object(builder, "main_window"));
+  window             = GTK_WINDOW(gtk_builder_get_object(builder, "main_window"));
   text_view          = GTK_TEXT_VIEW(gtk_builder_get_object(builder, "text_view"));
   note_store         = GTK_LIST_STORE(gtk_builder_get_object(builder, "note_list_store"));
   tag_store          = GTK_LIST_STORE(gtk_builder_get_object(builder, "tag_list_store"));
@@ -179,15 +183,84 @@ int main(int argc, char **argv) {
   accel_group = gtk_accel_group_new();
   gtk_window_add_accel_group(GTK_WINDOW(window), accel_group);
 
+  tray_icon = gtk_status_icon_new_from_stock(GTK_STOCK_EDIT);
+  gtk_status_icon_set_tooltip(tray_icon, "Rote Note");
+  g_signal_connect(tray_icon, "activate",   G_CALLBACK(on_tray_icon_activate),   NULL);
+  g_signal_connect(tray_icon, "popup-menu", G_CALLBACK(on_tray_icon_popup_menu), NULL);
+
+  tray_menu = GTK_MENU(gtk_menu_new());
+
+  tray_show = gtk_menu_item_new_with_label("Show");
+  tray_add  = gtk_menu_item_new_with_label("Add Note");
+  tray_quit = gtk_menu_item_new_with_label("Quit");
+
+  g_signal_connect(tray_show, "activate", G_CALLBACK(on_tray_show_activate), NULL);
+  g_signal_connect(tray_add,  "activate", G_CALLBACK(on_tray_add_activate),  NULL);
+  g_signal_connect(tray_quit, "activate", G_CALLBACK(on_tray_quit_activate), NULL);
+
+  gtk_menu_shell_append(GTK_MENU_SHELL(tray_menu), tray_show);
+  gtk_menu_shell_append(GTK_MENU_SHELL(tray_menu), tray_add);
+  gtk_menu_shell_append(GTK_MENU_SHELL(tray_menu), tray_quit);
+
+  gtk_widget_show_all(GTK_WIDGET(tray_menu));
+
   show_all_notes_in_list(MODIFIED_DESC);
   show_all_tags_in_list();
   select_tag_in_list(TAG_ALL);
   enable_hotkeys();
-  gtk_widget_show(window);
+  gtk_widget_show(GTK_WIDGET(window));
   gtk_main();
   delete_temp_dir();
 
   return EXIT_SUCCESS;
+}
+
+gboolean on_main_window_key_press_event(
+    __attribute__((unused))GtkWidget *widget,
+    GdkEventKey *event) {
+  // hide the window on ctrl-w
+  if ((event->keyval == 'w') && (event->state & GDK_CONTROL_MASK)) {
+    gtk_widget_hide(GTK_WIDGET(window));
+    window_shown = FALSE;
+  }
+  return FALSE;
+}
+
+void on_tray_icon_activate() {
+  if (window_shown) {
+    gtk_widget_hide(GTK_WIDGET(window));
+    window_shown = FALSE;
+  } else {
+    gtk_widget_show(GTK_WIDGET(window));
+    gtk_window_deiconify(window);
+    window_shown = TRUE;
+  }
+}
+
+void on_tray_icon_popup_menu(GtkStatusIcon *status_icon,
+                             guint button,
+                             guint activate_time) {
+  gtk_menu_popup(tray_menu,
+                 NULL,
+                 NULL,
+                 gtk_status_icon_position_menu,
+                 status_icon,
+                 button,
+                 activate_time);
+}
+
+void on_tray_quit_activate() {
+  gtk_main_quit();
+}
+
+void on_tray_show_activate() {
+  gtk_widget_show(GTK_WIDGET(window));
+  gtk_window_deiconify(window);
+  window_shown = TRUE;
+}
+
+void on_tray_add_activate() {
+  edit_note(note());
 }
 
 void on_note_select_previous() {
@@ -711,8 +784,11 @@ void clear_search() {
   select_tag_in_list(TAG_ALL);
 }
 
-void on_main_window_destroy() {
-  gtk_main_quit();
+gboolean on_main_window_delete_event() {
+  // prevent window destruction
+  gtk_widget_hide(GTK_WIDGET(window));
+  window_shown = FALSE;
+  return TRUE;
 }
 
 gchar** editor_argv(gchar *fn) {
@@ -895,12 +971,8 @@ gboolean on_tag_event(GtkTextTag *tag,
                       GdkEvent *event,
                       GtkTextIter *iter) {
   switch (event->type) {
-    case GDK_MOTION_NOTIFY:
-      // TODO
-      break;
     case GDK_BUTTON_RELEASE:
       click_tag(iter, tag);
-      // TODO
       break;
     default:
       break;
