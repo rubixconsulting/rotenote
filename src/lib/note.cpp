@@ -115,9 +115,6 @@ const string& note::value(const string& val) {
       case TEXT_TITLE:
         title += val_part;
         break;
-      case TEXT_SEPARATOR_TITLE:
-        title += val_part;
-        break;
       case TEXT_TAG:
         body += val_part;
         __tags.insert(val_part);
@@ -139,88 +136,174 @@ text_type note::part(string::size_type *iter, string *out) const {
     throw invalid_argument("note::part iter or val is null");
   }
 
+  out->clear();
   string str = value();
-
-  text_type default_type      = TEXT_PLAIN;
-  text_type default_separator = TEXT_SEPARATOR_PLAIN;
+  const string::size_type begin = *iter;
 
   // find the first newline
   string::size_type title_end = str.find_first_of("\n");
 
-  if ((title_end == string::npos) || (*iter < title_end)) {
+  if ((str.empty()) || (*iter >= str.size())) {
+    *iter = str.size();
+    return TEXT_INVALID;
+  } else if (title_end == string::npos) {
     // there was no newline, so the whole thing is the title
-    // or the iterator was before the first newline
-    default_type      = TEXT_TITLE;
-    default_separator = TEXT_SEPARATOR_TITLE;
+    *iter = str.size();
+    *out = str;
+    return TEXT_TITLE;
+  } else if (*iter < title_end) {
+    // the iterator was before the first newline
+    *iter = title_end;
+    *out = str.substr(begin, *iter-begin);
+    return TEXT_TITLE;
   }
 
-  text_type type = _token(str, default_type, default_separator, iter, out);
+  string token;
+  text_type type = TEXT_INVALID, special_type = TEXT_PLAIN;
+  special_state state;
+  string::size_type tmp_iter;
+
+  while (*iter < str.size()) {
+    tmp_iter = *iter;
+    text_type last_type = type;
+
+    token = _token(str, &tmp_iter);
+    state = _is_special(token, &type);
+
+    if (!out->empty() &&
+        ((state == BEGIN_SPECIAL) || (state == BEGIN_END_SPECIAL))) {
+      // there is stuff in the buffer and we encountered the beginning of a
+      // special type, don't advance the iterator or type and return the output
+      // buffer
+      return last_type;
+    }
+
+    // append to the output buffer and advance the iterator
+    *out += token;
+    *iter = tmp_iter;
+
+    if (state == BEGIN_SPECIAL) {
+      // keep track of the type of special part we have, but default to
+      // TEXT_PLAIN
+      special_type = type;
+    } else if ((state == END_SPECIAL) || (state == BEGIN_END_SPECIAL)) {
+      // we found the end of the special part
+      if (state == END_SPECIAL) {
+        // this is a multi part buffer, so it should be set to the type we found
+        // at the beginning and reset the special type to TEXT_PLAIN
+        type = special_type;
+        special_type = TEXT_PLAIN;
+      }
+
+      return type;
+    }
+  }
 
   return type;
 }
 
-text_type note::_token(const string& str,
-                       const text_type& default_type,
-                       const text_type& default_separator,
-                       string::size_type *iter,
-                       string *out) const {
-  if (!iter || !out) {
-    throw invalid_argument("note::_token iter or val is null");
-  }
+special_state note::_is_special(const std::string& str, text_type *type) const {
+  static regex link_regex(SCHEME "//(?:" USERPASS "\\@)?" HOST PORT URLPATH, icase);
+  static regex link_default_http_regex("(?:www|ftp)" HOSTCHARS_CLASS "*\\." HOST PORT URLPATH, icase);
+  static regex email_regex("(?:mailto:)?" USERCHARS_CLASS "[" USERCHARS ".]*\\@" HOSTCHARS_CLASS "+\\." HOST, icase);
 
-  out->clear();
-  const string::size_type begin = *iter;
+  if (str.empty()) {
+    *type = TEXT_INVALID;
+    return BEGIN_END_SPECIAL;
 
-  if (str.empty() || (*iter >= str.size())) {
-    *iter = str.size();
-    return TEXT_INVALID;
-  }
+  } else if (str[0] == TAG_DELIM) {
+    *type = TEXT_TAG;
+    return BEGIN_END_SPECIAL;
 
-  bool is_separator = _is_separator(str.substr(begin));
+  } else if (str[0] == TWITTER_DELIM) {
+    *type = TEXT_TWITTER;
+    return BEGIN_END_SPECIAL;
 
-  if (str.size() == 1) {
-    *out = str;
-    if (is_separator) {
-      return default_separator;
+  // begin BOLD
+  } else if (str[0] == BOLD_DELIM) {
+    *type = TEXT_BOLD;
+    if (str[str.size()-1] == BOLD_DELIM) {
+      // end BOLD
+      return BEGIN_END_SPECIAL;
     }
-    return default_type;
+    return BEGIN_SPECIAL;
+
+  // end BOLD
+  } else if (str[str.size()-1] == BOLD_DELIM) {
+    *type = TEXT_BOLD;
+    return END_SPECIAL;
+
+  // begin ITALIC
+  } else if (str[0] == ITALIC_DELIM) {
+    *type = TEXT_ITALIC;
+    if (str[str.size()-1] == ITALIC_DELIM) {
+      // end ITALIC
+      return BEGIN_END_SPECIAL;
+    }
+    return BEGIN_SPECIAL;
+
+  // end ITALIC
+  } else if (str[str.size()-1] == ITALIC_DELIM) {
+    *type = TEXT_ITALIC;
+    return END_SPECIAL;
+
+  // begin UNDERLINE
+  } else if (str[0] == UNDERLINE_DELIM) {
+    *type = TEXT_UNDERLINE;
+    if (str[str.size()-1] == UNDERLINE_DELIM) {
+      // end UNDERLINE
+      return BEGIN_END_SPECIAL;
+    }
+    return BEGIN_SPECIAL;
+
+  // end UNDERLINE
+  } else if (str[str.size()-1] == UNDERLINE_DELIM) {
+    *type = TEXT_UNDERLINE;
+    return END_SPECIAL;
+
+  } else if (regex_match(str, link_regex)) {
+    *type = TEXT_LINK;
+    return BEGIN_END_SPECIAL;
+
+  } else if (regex_match(str, link_default_http_regex)) {
+    *type = TEXT_LINK_DEFAULT_HTTP;
+    return BEGIN_END_SPECIAL;
+
+  } else if (regex_match(str, email_regex)) {
+    *type = TEXT_EMAIL;
+    return BEGIN_END_SPECIAL;
   }
 
+  *type = TEXT_PLAIN;
+  return SPECIAL_UNKNOWN;
+}
+
+string note::_token(const std::string& str,
+                    string::size_type *iter) const {
+  const string::size_type begin = *iter;
+  string test = str.substr(begin);
+
+  if (test.empty()) {
+    *iter = str.size();
+    return false;
+  } else if (test.size() == 1) {
+    *iter = str.size();
+    return test;
+  }
+
+  bool is_separator = _is_separator(test);
   ++(*iter);
 
   while (*iter < str.size()) {
     if (is_separator && !_is_separator(str.substr(*iter))) {
-      *out = str.substr(begin, (*iter-begin));
-      return default_separator;
+      break;
     } else if (!is_separator && _is_separator(str.substr(*iter))) {
       break;
     }
     ++(*iter);
   }
 
-  *out = str.substr(begin, (*iter-begin));
-
-  static regex link_regex(SCHEME "//(?:" USERPASS "\\@)?" HOST PORT URLPATH, icase);
-  static regex link_default_http_regex("(?:www|ftp)" HOSTCHARS_CLASS "*\\." HOST PORT URLPATH, icase);
-  static regex email_regex("(?:mailto:)?" USERCHARS_CLASS "[" USERCHARS ".]*\\@" HOSTCHARS_CLASS "+\\." HOST, icase);
-
-  if (out->empty()) {
-    return TEXT_INVALID;
-  } else if ((*out)[0] == TAG_DELIM) {
-    return TEXT_TAG;
-  } else if ((*out)[0] == TWITTER_DELIM) {
-    return TEXT_TWITTER;
-  } else if (((*out)[0] == BOLD_DELIM) && ((*out)[out->size()-1] == BOLD_DELIM)) {
-    return TEXT_BOLD;
-  } else if (regex_match(*out, link_regex)) {
-    return TEXT_LINK;
-  } else if (regex_match(*out, link_default_http_regex)) {
-    return TEXT_LINK_DEFAULT_HTTP;
-  } else if (regex_match(*out, email_regex)) {
-    return TEXT_EMAIL;
-  }
-
-  return default_type;
+  return str.substr(begin, (*iter-begin));
 }
 
 bool note::_is_separator(const string& str) const {

@@ -11,23 +11,32 @@
 
 namespace rubix {
 
-#define TAG_ALL       "#all"
-#define TAG_DELIM     '#'
-#define BOLD_DELIM    '*'
-#define TWITTER_DELIM '@'
+#define TAG_ALL         "#all"
+#define TAG_DELIM       '#'
+#define BOLD_DELIM      '*'
+#define ITALIC_DELIM    '/'
+#define UNDERLINE_DELIM '_'
+#define TWITTER_DELIM   '@'
 
 enum text_type {
   TEXT_INVALID,
-  TEXT_TITLE,
-  TEXT_SEPARATOR_TITLE,
   TEXT_PLAIN,
-  TEXT_SEPARATOR_PLAIN,
-  TEXT_TAG,
+  TEXT_TITLE,
   TEXT_BOLD,
+  TEXT_ITALIC,
+  TEXT_UNDERLINE,
+  TEXT_TAG,
   TEXT_LINK,
   TEXT_LINK_DEFAULT_HTTP,
   TEXT_EMAIL,
   TEXT_TWITTER
+};
+
+enum special_state {
+  SPECIAL_UNKNOWN,
+  BEGIN_SPECIAL,
+  END_SPECIAL,
+  BEGIN_END_SPECIAL
 };
 
 class note {
@@ -68,11 +77,9 @@ class note {
     // methods
     void                            _init();
     bool                            _is_separator(const std::string&) const;
-    text_type                       _token(const std::string&,
-                                           const text_type&,
-                                           const text_type&,
-                                           std::string::size_type*,
-                                           std::string*) const;
+    std::string                     _token(const std::string&,
+                                           std::string::size_type*) const;
+    special_state                   _is_special(const std::string&, text_type*) const;
     const std::string&              _title(const std::string&);
     const std::string&              _body(const std::string&);
     boost::posix_time::ptime        _now() const;
