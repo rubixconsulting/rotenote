@@ -204,10 +204,14 @@ text_type note::_token(const string& str,
   static regex link_default_http_regex("(?:www|ftp)" HOSTCHARS_CLASS "*\\." HOST PORT URLPATH, icase);
   static regex email_regex("(?:mailto:)?" USERCHARS_CLASS "[" USERCHARS ".]*\\@" HOSTCHARS_CLASS "+\\." HOST, icase);
 
-  if ((*out)[0] == TAG_DELIM) {
+  if (out->empty()) {
+    return TEXT_INVALID;
+  } else if ((*out)[0] == TAG_DELIM) {
     return TEXT_TAG;
   } else if ((*out)[0] == TWITTER_DELIM) {
     return TEXT_TWITTER;
+  } else if (((*out)[0] == BOLD_DELIM) && ((*out)[out->size()-1] == BOLD_DELIM)) {
+    return TEXT_BOLD;
   } else if (regex_match(*out, link_regex)) {
     return TEXT_LINK;
   } else if (regex_match(*out, link_default_http_regex)) {

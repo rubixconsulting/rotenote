@@ -13,6 +13,7 @@ namespace rubix {
 
 #define TAG_ALL       "#all"
 #define TAG_DELIM     '#'
+#define BOLD_DELIM    '*'
 #define TWITTER_DELIM '@'
 
 enum text_type {
@@ -22,6 +23,7 @@ enum text_type {
   TEXT_PLAIN,
   TEXT_SEPARATOR_PLAIN,
   TEXT_TAG,
+  TEXT_BOLD,
   TEXT_LINK,
   TEXT_LINK_DEFAULT_HTTP,
   TEXT_EMAIL,
