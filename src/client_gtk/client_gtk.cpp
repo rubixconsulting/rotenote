@@ -27,6 +27,8 @@ using ::rubix::TEXT_TITLE;
 using ::rubix::TEXT_PLAIN;
 using ::rubix::TEXT_TAG;
 using ::rubix::TEXT_BOLD;
+using ::rubix::TEXT_ITALIC;
+using ::rubix::TEXT_UNDERLINE;
 using ::rubix::TEXT_LINK;
 using ::rubix::TEXT_LINK_DEFAULT_HTTP;
 using ::rubix::TEXT_EMAIL;
@@ -52,6 +54,8 @@ GtkTextTag       *link_default_http_tag = NULL;
 GtkTextTag       *email_tag             = NULL;
 GtkTextTag       *twitter_tag           = NULL;
 GtkTextTag       *bold_tag              = NULL;
+GtkTextTag       *italic_tag            = NULL;
+GtkTextTag       *underline_tag         = NULL;
 GtkAccelGroup    *accel_group           = NULL;
 GtkStatusIcon    *tray_icon             = NULL;
 GtkMenu          *tray_menu             = NULL;
@@ -105,6 +109,8 @@ int main(int argc, char **argv) {
   email_tag             = gtk_text_tag_new("email_tag");
   twitter_tag           = gtk_text_tag_new("twitter_tag");
   bold_tag              = gtk_text_tag_new("bold_tag");
+  italic_tag            = gtk_text_tag_new("italic_tag");
+  underline_tag         = gtk_text_tag_new("underline_tag");
 
   g_object_set(title_tag, "weight", PANGO_WEIGHT_BOLD,    "weight-set", TRUE, NULL);
   g_object_set(title_tag, "scale",  PANGO_SCALE_XX_LARGE, "scale-set",  TRUE, NULL);
@@ -129,7 +135,9 @@ int main(int argc, char **argv) {
   g_object_set(twitter_tag, "underline", PANGO_UNDERLINE_SINGLE, "underline-set", TRUE, NULL);
   g_signal_connect(G_OBJECT(twitter_tag), "event", G_CALLBACK(on_tag_event), NULL);
 
-  g_object_set(bold_tag, "weight", PANGO_WEIGHT_BOLD, "weight-set", TRUE, NULL);
+  g_object_set(bold_tag,      "weight",    PANGO_WEIGHT_BOLD,      "weight-set",    TRUE, NULL);
+  g_object_set(italic_tag,    "style",     PANGO_STYLE_ITALIC,     "style-set",     TRUE, NULL);
+  g_object_set(underline_tag, "underline", PANGO_UNDERLINE_SINGLE, "underline-set", TRUE, NULL);
 
   gtk_text_tag_table_add(tag_table, title_tag);
   gtk_text_tag_table_add(tag_table, tag_tag);
@@ -138,6 +146,8 @@ int main(int argc, char **argv) {
   gtk_text_tag_table_add(tag_table, email_tag);
   gtk_text_tag_table_add(tag_table, twitter_tag);
   gtk_text_tag_table_add(tag_table, bold_tag);
+  gtk_text_tag_table_add(tag_table, italic_tag);
+  gtk_text_tag_table_add(tag_table, underline_tag);
 
   note_selection = gtk_tree_view_get_selection(note_view);
   gtk_tree_selection_set_mode(note_selection, GTK_SELECTION_SINGLE);
@@ -599,6 +609,12 @@ void show_note_in_buffer(const gint& note_id) {
       case TEXT_BOLD:
         append_tag_text_to_buffer(val_part, bold_tag);
         break;
+      case TEXT_ITALIC:
+        append_tag_text_to_buffer(val_part, italic_tag);
+        break;
+      case TEXT_UNDERLINE:
+        append_tag_text_to_buffer(val_part, underline_tag);
+        break;
       default:
         append_text_to_buffer(val_part);
     }
@@ -813,6 +829,14 @@ gchar** editor_argv(gchar *fn) {
   return argv;
 }
 
+gboolean file_exists(const gchar *fn) {
+  struct stat buf;
+  if (!stat(fn, &buf)) {
+    return true;
+  }
+  return false;
+}
+
 GPid edit_note(const note& n) {
   stringstream fns;
   fns << *tmp_dir << "/";
@@ -826,6 +850,9 @@ GPid edit_note(const note& n) {
   strncpy(fn, fns.str().c_str(), fns.str().size());
 
   if (n.id()) {
+    if (file_exists(fn)) {
+      return 0;
+    }
     n.write_to_file(fn);
   }
 

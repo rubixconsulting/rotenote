@@ -100,6 +100,7 @@ gboolean    get_iter_for_tag_in_list(const std::string&, GtkTreeIter*);
 gboolean    get_iter_for_selected_tag_in_list(GtkTreeIter*);
 gboolean    selected_note_iter(GtkTreeIter*);
 gboolean    selected_tag_iter(GtkTreeIter*);
+gboolean    file_exists(const gchar*);
 GPid        edit_note(const rubix::note&);
 gchar**     editor_argv(gchar*);
 rubix::note selected_note();
