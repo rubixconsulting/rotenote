@@ -26,6 +26,7 @@ using ::rubix::TEXT_INVALID;
 using ::rubix::TEXT_TITLE;
 using ::rubix::TEXT_PLAIN;
 using ::rubix::TEXT_TAG;
+using ::rubix::TEXT_BOLD;
 using ::rubix::TEXT_LINK;
 using ::rubix::TEXT_LINK_DEFAULT_HTTP;
 using ::rubix::TEXT_EMAIL;
@@ -50,6 +51,7 @@ GtkTextTag       *link_tag              = NULL;
 GtkTextTag       *link_default_http_tag = NULL;
 GtkTextTag       *email_tag             = NULL;
 GtkTextTag       *twitter_tag           = NULL;
+GtkTextTag       *bold_tag              = NULL;
 GtkAccelGroup    *accel_group           = NULL;
 GtkStatusIcon    *tray_icon             = NULL;
 GtkMenu          *tray_menu             = NULL;
@@ -102,6 +104,7 @@ int main(int argc, char **argv) {
   link_default_http_tag = gtk_text_tag_new("link_default_http_tag");
   email_tag             = gtk_text_tag_new("email_tag");
   twitter_tag           = gtk_text_tag_new("twitter_tag");
+  bold_tag              = gtk_text_tag_new("bold_tag");
 
   g_object_set(title_tag, "weight", PANGO_WEIGHT_BOLD,    "weight-set", TRUE, NULL);
   g_object_set(title_tag, "scale",  PANGO_SCALE_XX_LARGE, "scale-set",  TRUE, NULL);
@@ -126,12 +129,15 @@ int main(int argc, char **argv) {
   g_object_set(twitter_tag, "underline", PANGO_UNDERLINE_SINGLE, "underline-set", TRUE, NULL);
   g_signal_connect(G_OBJECT(twitter_tag), "event", G_CALLBACK(on_tag_event), NULL);
 
+  g_object_set(bold_tag, "weight", PANGO_WEIGHT_BOLD, "weight-set", TRUE, NULL);
+
   gtk_text_tag_table_add(tag_table, title_tag);
   gtk_text_tag_table_add(tag_table, tag_tag);
   gtk_text_tag_table_add(tag_table, link_tag);
   gtk_text_tag_table_add(tag_table, link_default_http_tag);
   gtk_text_tag_table_add(tag_table, email_tag);
   gtk_text_tag_table_add(tag_table, twitter_tag);
+  gtk_text_tag_table_add(tag_table, bold_tag);
 
   note_selection = gtk_tree_view_get_selection(note_view);
   gtk_tree_selection_set_mode(note_selection, GTK_SELECTION_SINGLE);
@@ -590,6 +596,9 @@ void show_note_in_buffer(const gint& note_id) {
       case TEXT_TWITTER:
         append_tag_text_to_buffer(val_part, twitter_tag);
         break;
+      case TEXT_BOLD:
+        append_tag_text_to_buffer(val_part, bold_tag);
+        break;
       default:
         append_text_to_buffer(val_part);
     }
@@ -833,6 +842,10 @@ GPid edit_note(const note& n) {
     tn->note = n;
   }
   tn->file = fn;
+  tn->mtime = 0;
+  if (n.id()) {
+    tn->mtime = get_mtime(fn);
+  }
 
   g_child_watch_add(pid, done_editing, tn);
 
@@ -841,11 +854,32 @@ GPid edit_note(const note& n) {
   return pid;
 }
 
+time_t get_mtime(const gchar *fn) {
+  struct stat buf;
+  if (!stat(fn, &buf)) {
+    return buf.st_mtime;
+  }
+  return 0;
+}
+
 void done_editing(GPid pid, __attribute__((unused))gint status, gpointer data) {
   tmp_note *tn = (tmp_note*)data;
 
   struct stat buf;
   if (!stat(tn->file.c_str(), &buf)) {
+    // the file exists
+
+    if (tn->note.id()) {
+      time_t new_mtime = get_mtime(tn->file.c_str());
+      if (new_mtime <= tn->mtime) {
+        // the file was not modified
+        unlink(tn->file.c_str());
+        delete (tmp_note*)data;
+        g_spawn_close_pid(pid);
+        return;
+      }
+    }
+
     tn->note.load_from_file(tn->file);
     unlink(tn->file.c_str());
 

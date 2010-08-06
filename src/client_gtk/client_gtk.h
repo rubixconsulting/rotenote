@@ -33,6 +33,7 @@ enum {
 typedef struct {
   rubix::note note;
   std::string file;
+  time_t      mtime;
 } tmp_note;
 
 extern "C" {
@@ -92,6 +93,7 @@ void        clear_search();
 void        append_text_to_buffer(const std::string&);
 void        append_tag_text_to_buffer(const std::string&, GtkTextTag*);
 void        click_tag(const GtkTextIter*, GtkTextTag*);
+time_t      get_mtime(const gchar*);
 gboolean    on_tag_event(GtkTextTag*, GObject*, GdkEvent*, GtkTextIter*);
 gboolean    get_iter_for_note_in_list(const rubix::note&, GtkTreeIter*);
 gboolean    get_iter_for_tag_in_list(const std::string&, GtkTreeIter*);
