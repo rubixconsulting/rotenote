@@ -20,7 +20,7 @@ using ::rubix::rote_db;
 using ::rubix::note;
 using ::rubix::notes;
 using ::rubix::tags;
-using ::rubix::MODIFIED_DESC;
+using ::rubix::UPDATED_AT_DESC;
 using ::rubix::text_type;
 using ::rubix::TEXT_INVALID;
 using ::rubix::TEXT_TITLE;
@@ -63,7 +63,7 @@ rote_db          *db                    = NULL;
 GtkWindow        *window                = NULL;
 gboolean          window_shown          = TRUE;
 string           *tmp_dir               = new string();
-uint32_t          new_note_id           = 0;
+uint32_t          new_id                = 0;
 
 int main(int argc, char **argv) {
   GtkBuilder      *builder   = NULL;
@@ -220,7 +220,7 @@ int main(int argc, char **argv) {
 
   gtk_widget_show_all(GTK_WIDGET(tray_menu));
 
-  show_all_notes_in_list(MODIFIED_DESC);
+  show_all_notes_in_list(UPDATED_AT_DESC);
   show_all_tags_in_list();
   select_tag_in_list(TAG_ALL);
   enable_hotkeys();
@@ -404,11 +404,11 @@ gboolean get_iter_for_note_in_list(const note& n, GtkTreeIter *iter) {
   }
 
   GtkTreeModel *tm = GTK_TREE_MODEL(note_store);
-  uint32_t note_id;
+  uint32_t id;
   gboolean valid = gtk_tree_model_get_iter_first(tm, iter);
   while (valid) {
-    gtk_tree_model_get(tm, iter, NOTE_ID_COLUMN, &note_id, -1);
-    if (note_id == n.id()) {
+    gtk_tree_model_get(tm, iter, NOTE_ID_COLUMN, &id, -1);
+    if (id == n.id()) {
       return TRUE;
     }
     valid = gtk_tree_model_iter_next(tm, iter);
@@ -547,9 +547,9 @@ void on_note_selection_changed(GtkTreeSelection *ts) {
   GtkTreeIter iter;
   if (gtk_tree_selection_get_selected(ts, NULL, &iter)) {
     GtkTreeModel *tm = GTK_TREE_MODEL(note_store);
-    gint note_id;
-    gtk_tree_model_get(tm, &iter, NOTE_ID_COLUMN, &note_id, -1);
-    show_note_in_buffer(note_id);
+    gint id;
+    gtk_tree_model_get(tm, &iter, NOTE_ID_COLUMN, &id, -1);
+    show_note_in_buffer(id);
     gtk_widget_set_sensitive(GTK_WIDGET(edit_button),   true);
     gtk_widget_set_sensitive(GTK_WIDGET(delete_button), true);
   } else {
@@ -566,10 +566,10 @@ void on_tag_selection_changed(GtkTreeSelection *ts) {
     gchar *tag;
     gtk_tree_model_get(tm, &iter, TAG_COLUMN, &tag, -1);
     gtk_entry_set_text(search_entry, "");
-    show_notes_with_tag_in_list(tag, MODIFIED_DESC);
+    show_notes_with_tag_in_list(tag, UPDATED_AT_DESC);
   } else {
     if (search_text().empty()) {
-      show_all_notes_in_list(MODIFIED_DESC);
+      show_all_notes_in_list(UPDATED_AT_DESC);
       select_tag_in_list(TAG_ALL);
     }
   }
@@ -580,8 +580,8 @@ string search_text() {
   return gtk_entry_get_text(search_entry);
 }
 
-void show_note_in_buffer(const gint& note_id) {
-  const note n = db->by_id(note_id);
+void show_note_in_buffer(const gint& id) {
+  const note n = db->by_id(id);
   clear_buffer();
   string::size_type iter = 0;
   string val_part;
@@ -726,9 +726,9 @@ note selected_note() {
     return note();
   }
   GtkTreeModel *tm = GTK_TREE_MODEL(note_store);
-  gint note_id;
-  gtk_tree_model_get(tm, &iter, NOTE_ID_COLUMN, &note_id, -1);
-  return db->by_id(note_id);
+  gint id;
+  gtk_tree_model_get(tm, &iter, NOTE_ID_COLUMN, &id, -1);
+  return db->by_id(id);
 }
 
 void deselect_tag_in_list() {
@@ -800,12 +800,12 @@ void on_search_entry_activate() {
     return;
   }
   deselect_tag_in_list();
-  search(text, MODIFIED_DESC);
+  search(text, UPDATED_AT_DESC);
 }
 
 void clear_search() {
   gtk_entry_set_text(search_entry, "");
-  show_all_notes_in_list(MODIFIED_DESC);
+  show_all_notes_in_list(UPDATED_AT_DESC);
   select_tag_in_list(TAG_ALL);
 }
 
@@ -843,8 +843,8 @@ GPid edit_note(const note& n) {
   if (n.id()) {
     fns << "e" << n.id();
   } else {
-    fns << "n" << new_note_id;
-    ++new_note_id;
+    fns << "n" << new_id;
+    ++new_id;
   }
   gchar *fn = new char[fns.str().size()+1];
   strncpy(fn, fns.str().c_str(), fns.str().size());

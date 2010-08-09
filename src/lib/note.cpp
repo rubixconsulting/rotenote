@@ -36,10 +36,10 @@ note::note() {
 
 note::note(const row& val) {
   _init();
-  id(val.find("note_id")->second);
+  id(val.find("id")->second);
   value(val.find("note")->second);
-  _created(val.find("created")->second);
-  _modified(val.find("modified")->second);
+  _created_at(val.find("created_at")->second);
+  _updated_at(val.find("updated_at")->second);
 }
 
 boost::posix_time::ptime note::_now() const {
@@ -49,8 +49,8 @@ boost::posix_time::ptime note::_now() const {
 void note::_init() {
   id(0);
   value("");
-  _created(_now());
-  _modified(_now());
+  _created_at(_now());
+  _updated_at(_now());
   _title("");
   _body("");
   __tags.clear();
@@ -127,7 +127,7 @@ const string& note::value(const string& val) {
   _body(body);
   _title(title);
 
-  _modified(_now());
+  _updated_at(_now());
   return value();
 }
 
@@ -330,32 +330,32 @@ bool note::_is_separator(const string& str) const {
   return false;
 }
 
-const boost::posix_time::ptime& note::created() const {
-  return __created;
+const boost::posix_time::ptime& note::created_at() const {
+  return __created_at;
 }
 
-const boost::posix_time::ptime& note::_created(
+const boost::posix_time::ptime& note::_created_at(
     const boost::posix_time::ptime& val) {
-  __created = val;
-  return created();
+  __created_at = val;
+  return created_at();
 }
 
-const boost::posix_time::ptime& note::_created(const string& val) {
-  return _created(boost::posix_time::time_from_string(val));
+const boost::posix_time::ptime& note::_created_at(const string& val) {
+  return _created_at(boost::posix_time::time_from_string(val));
 }
 
-const boost::posix_time::ptime& note::modified() const {
-  return __modified;
+const boost::posix_time::ptime& note::updated_at() const {
+  return __updated_at;
 }
 
-const boost::posix_time::ptime& note::_modified(
+const boost::posix_time::ptime& note::_updated_at(
     const boost::posix_time::ptime& val) {
-  __modified = val;
-  return modified();
+  __updated_at = val;
+  return updated_at();
 }
 
-const boost::posix_time::ptime& note::_modified(const string& val) {
-  return _modified(boost::posix_time::time_from_string(val));
+const boost::posix_time::ptime& note::_updated_at(const string& val) {
+  return _updated_at(boost::posix_time::time_from_string(val));
 }
 
 const rubix::tags& note::tags() const {

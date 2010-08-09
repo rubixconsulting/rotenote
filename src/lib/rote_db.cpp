@@ -249,10 +249,10 @@ void rote_db::_init_db() const {
 
   sql.str("");
   sql << "CREATE TABLE notes (";
-  sql << "  note_id  INTEGER NOT NULL PRIMARY KEY,";
-  sql << "  note     TEXT    NOT NULL DEFAULT '',";
-  sql << "  created  TEXT    NOT NULL DEFAULT (datetime('now')),";
-  sql << "  modified TEXT    NOT NULL DEFAULT (datetime('now'))";
+  sql << "  id         INTEGER  NOT NULL PRIMARY KEY,";
+  sql << "  note       TEXT     NOT NULL DEFAULT '',";
+  sql << "  created_at DATETIME NOT NULL DEFAULT (datetime('now')),";
+  sql << "  updated_at DATETIME NOT NULL DEFAULT (datetime('now'))";
   sql << ")";
   _exec(sql.str());
 
@@ -264,10 +264,10 @@ void rote_db::_init_db() const {
 
   sql.str("");
   sql << "CREATE TABLE notes_tags (";
-  sql << "  note_id INTEGER NOT NULL,";
-  sql << "  tag     TEXT    NOT NULL,";
-  sql << "  PRIMARY KEY (note_id, tag),";
-  sql << "  FOREIGN KEY (note_id) REFERENCES notes(note_id)";
+  sql << "  id  INTEGER NOT NULL,";
+  sql << "  tag TEXT    NOT NULL,";
+  sql << "  PRIMARY KEY (id, tag),";
+  sql << "  FOREIGN KEY (id) REFERENCES notes(id)";
   sql << "    ON DELETE CASCADE ON UPDATE CASCADE,";
   sql << "  FOREIGN KEY (tag)     REFERENCES tags(tag)";
   sql << "    ON DELETE CASCADE ON UPDATE CASCADE";
@@ -332,9 +332,9 @@ int rote_db::save_note(note *value) const {
 int rote_db::_insert_note(note *value) const {
   _begin();
   row values;
-  values["note"]     = value->value();
-  values["created"]  = boost::posix_time::to_simple_string(value->created());
-  values["modified"] = boost::posix_time::to_simple_string(value->modified());
+  values["note"]       = value->value();
+  values["created_at"] = boost::posix_time::to_simple_string(value->created_at());
+  values["updated_at"] = boost::posix_time::to_simple_string(value->updated_at());
   const int id = _insert("notes", values);
   value->id(id);
   return _save_tags(value);
@@ -343,16 +343,16 @@ int rote_db::_insert_note(note *value) const {
 int rote_db::_update_note(const note *value) const {
   _begin();
   row values, conditions;
-  values["note"]     = value->value();
-  values["modified"] = boost::posix_time::to_simple_string(value->modified());
-  conditions["note_id"] = _int_to_str(value->id());
+  values["note"]       = value->value();
+  values["updated_at"] = boost::posix_time::to_simple_string(value->updated_at());
+  conditions["id"]     = _int_to_str(value->id());
   _update("notes", values, conditions);
   return _save_tags(value);
 }
 
 int rote_db::_save_tags(const note *value) const {
   row conditions;
-  conditions["note_id"] = _int_to_str(value->id());
+  conditions["id"] = _int_to_str(value->id());
   _delete("notes_tags", conditions);
 
   string sql;
@@ -382,7 +382,7 @@ void rote_db::_save_tag(const string& tag, const note *value) const {
   _exec_prepared(sql, conditions);
 
   row values;
-  values["note_id"] = _int_to_str(value->id());
+  values["id"] = _int_to_str(value->id());
   values["tag"]     = tag;
   _insert("notes_tags", values);
 }
@@ -406,17 +406,17 @@ string rote_db::_order_by(const sort& value) const {
   string ret;
   ret = "  ORDER BY ";
   switch (value) {
-    case CREATION:
-      ret += "CREATED";
+    case CREATED_AT:
+      ret += "created_at";
       break;
-    case CREATION_DESC:
-      ret += "CREATED DESC";
+    case CREATED_AT_DESC:
+      ret += "created_at DESC";
       break;
-    case MODIFIED:
-      ret += "MODIFIED";
+    case UPDATED_AT:
+      ret += "updated_at";
       break;
-    case MODIFIED_DESC:
-      ret += "MODIFIED DESC";
+    case UPDATED_AT_DESC:
+      ret += "updated_at DESC";
       break;
   }
   return ret;
@@ -448,12 +448,12 @@ notes rote_db::search(const string& condition, const sort& value) const {
   return ret;
 }
 
-note rote_db::by_id(const uint32_t& note_id) const {
+note rote_db::by_id(const uint32_t& id) const {
   string sql;
-  sql = "SELECT * FROM notes WHERE note_id = ?";
+  sql = "SELECT * FROM notes WHERE id = ?";
 
   string_v conditions;
-  conditions.push_back(_int_to_str(note_id));
+  conditions.push_back(_int_to_str(id));
   rubix::row row = _get_row(sql, conditions);
 
   return note(row);
@@ -463,8 +463,8 @@ notes rote_db::by_tag(const string& tag, const sort& value) const {
   string sql;
   sql  = "SELECT *";
   sql += "  FROM notes";
-  sql += "  WHERE note_id IN (";
-  sql += "    SELECT note_id";
+  sql += "  WHERE id IN (";
+  sql += "    SELECT id";
   sql += "      FROM notes_tags";
   sql += "      WHERE LOWER(tag) = LOWER(?)";
   sql += "  )";
@@ -489,11 +489,11 @@ int rote_db::num_notes() const {
 
 void rote_db::delete_note(const note& value) const {
   if (!value.id()) {
-    throw invalid_argument("can not delete note without note_id");
+    throw invalid_argument("can not delete note without id");
   }
 
   row conditions;
-  conditions["note_id"] = _int_to_str(value.id());
+  conditions["id"] = _int_to_str(value.id());
   _delete("notes", conditions);
 
   string sql;

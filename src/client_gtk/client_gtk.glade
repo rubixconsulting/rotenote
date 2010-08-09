@@ -4,7 +4,7 @@
   <!-- interface-naming-policy project-wide -->
   <object class="GtkListStore" id="note_list_store">
     <columns>
-      <!-- column-name note_id -->
+      <!-- column-name id -->
       <column type="gint"/>
       <!-- column-name note -->
       <column type="gchararray"/>

@@ -18,10 +18,10 @@ typedef std::vector<row>                          rows;
 typedef std::vector<std::string>                  string_v;
 
 enum sort {
-  CREATION,
-  CREATION_DESC,
-  MODIFIED,
-  MODIFIED_DESC
+  CREATED_AT,
+  CREATED_AT_DESC,
+  UPDATED_AT,
+  UPDATED_AT_DESC
 };
 };
 

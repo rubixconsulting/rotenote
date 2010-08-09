@@ -25,10 +25,10 @@ int main(int argc, char **argv) {
 
   cout << "test:\n";
   cout << "  id: " << test.id() << "\n";
-  cout << "  created:  ";
-  cout << boost::posix_time::to_simple_string(test.created())  << "\n";
-  cout << "  modified: ";
-  cout << boost::posix_time::to_simple_string(test.modified()) << "\n";
+  cout << "  created_at:  ";
+  cout << boost::posix_time::to_simple_string(test.created_at())  << "\n";
+  cout << "  updated_at: ";
+  cout << boost::posix_time::to_simple_string(test.updated_at()) << "\n";
   cout << test.value() << "\n\n";
 
   cout << "number of notes: " << db.num_notes() << "\n";

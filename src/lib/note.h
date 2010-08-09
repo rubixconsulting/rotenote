@@ -61,8 +61,8 @@ class note {
     const std::string&              value() const;
     const std::string&              value(const std::string&);
     const std::string&              load_from_file(const std::string&);
-    const boost::posix_time::ptime& created() const;
-    const boost::posix_time::ptime& modified() const;
+    const boost::posix_time::ptime& created_at() const;
+    const boost::posix_time::ptime& updated_at() const;
 
   private:
     // properties
@@ -71,8 +71,8 @@ class note {
     std::string              __title;
     std::string              __body;
     std::string              __value;
-    boost::posix_time::ptime __created;
-    boost::posix_time::ptime __modified;
+    boost::posix_time::ptime __created_at;
+    boost::posix_time::ptime __updated_at;
 
     // methods
     void                            _init();
@@ -83,10 +83,10 @@ class note {
     const std::string&              _title(const std::string&);
     const std::string&              _body(const std::string&);
     boost::posix_time::ptime        _now() const;
-    const boost::posix_time::ptime& _created(const std::string&);
-    const boost::posix_time::ptime& _created(const boost::posix_time::ptime&);
-    const boost::posix_time::ptime& _modified(const std::string&);
-    const boost::posix_time::ptime& _modified(const boost::posix_time::ptime&);
+    const boost::posix_time::ptime& _created_at(const std::string&);
+    const boost::posix_time::ptime& _created_at(const boost::posix_time::ptime&);
+    const boost::posix_time::ptime& _updated_at(const std::string&);
+    const boost::posix_time::ptime& _updated_at(const boost::posix_time::ptime&);
 };
 typedef std::vector<note> notes;
 std::ostream& operator<<(std::ostream&, const note&);
