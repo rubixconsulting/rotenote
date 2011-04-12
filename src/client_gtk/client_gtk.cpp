@@ -12,6 +12,10 @@
 #include <sys/stat.h>
 #include <boost/algorithm/string.hpp>
 
+#ifdef HAVE_APP_INDICATOR
+#include <libappindicator/app-indicator.h>
+#endif
+
 using ::std::string;
 using ::std::ifstream;
 using ::std::stringstream;
@@ -57,11 +61,16 @@ GtkTextTag       *bold_tag              = NULL;
 GtkTextTag       *italic_tag            = NULL;
 GtkTextTag       *underline_tag         = NULL;
 GtkAccelGroup    *accel_group           = NULL;
+#ifdef HAVE_APP_INDICATOR
+AppIndicator     *app_indicator         = NULL;
+#else
 GtkStatusIcon    *tray_icon             = NULL;
+#endif
 GtkMenu          *tray_menu             = NULL;
 rote_db          *db                    = NULL;
 GtkWindow        *window                = NULL;
-gboolean          window_shown          = TRUE;
+GtkWidget        *tray_toggle           = NULL;
+GtkWidget        *tray_front            = NULL;
 string           *tmp_dir               = new string();
 uint32_t          new_id                = 0;
 
@@ -72,7 +81,6 @@ int main(int argc, char **argv) {
   GError          *error     = NULL;
   GtkWidget       *tray_quit = NULL;
   GtkWidget       *tray_add  = NULL;
-  GtkWidget       *tray_show = NULL;
   stringstream  data;
 
   db = new rote_db(dbfile());
@@ -199,22 +207,31 @@ int main(int argc, char **argv) {
   accel_group = gtk_accel_group_new();
   gtk_window_add_accel_group(GTK_WINDOW(window), accel_group);
 
+  tray_menu = GTK_MENU(gtk_menu_new());
+
+  tray_front  = gtk_menu_item_new_with_label("Bring to Front");
+  tray_toggle = gtk_menu_item_new_with_label("Hide");
+  tray_add    = gtk_menu_item_new_with_label("Add Note");
+  tray_quit   = gtk_menu_item_new_with_label("Quit");
+
+#ifdef HAVE_APP_INDICATOR
+  app_indicator = app_indicator_new("rotenote", GTK_STOCK_EDIT, APP_INDICATOR_CATEGORY_OTHER);
+  app_indicator_set_status(app_indicator, APP_INDICATOR_STATUS_ACTIVE);
+  app_indicator_set_menu(app_indicator, tray_menu);
+#else
   tray_icon = gtk_status_icon_new_from_stock(GTK_STOCK_EDIT);
   gtk_status_icon_set_tooltip(tray_icon, "Rote Note");
   g_signal_connect(tray_icon, "activate",   G_CALLBACK(on_tray_icon_activate),   NULL);
   g_signal_connect(tray_icon, "popup-menu", G_CALLBACK(on_tray_icon_popup_menu), NULL);
+#endif
 
-  tray_menu = GTK_MENU(gtk_menu_new());
+  g_signal_connect(tray_front,  "activate", G_CALLBACK(on_tray_front_activate),  NULL);
+  g_signal_connect(tray_toggle, "activate", G_CALLBACK(on_tray_toggle_activate), NULL);
+  g_signal_connect(tray_add,    "activate", G_CALLBACK(on_tray_add_activate),    NULL);
+  g_signal_connect(tray_quit,   "activate", G_CALLBACK(on_tray_quit_activate),   NULL);
 
-  tray_show = gtk_menu_item_new_with_label("Show");
-  tray_add  = gtk_menu_item_new_with_label("Add Note");
-  tray_quit = gtk_menu_item_new_with_label("Quit");
-
-  g_signal_connect(tray_show, "activate", G_CALLBACK(on_tray_show_activate), NULL);
-  g_signal_connect(tray_add,  "activate", G_CALLBACK(on_tray_add_activate),  NULL);
-  g_signal_connect(tray_quit, "activate", G_CALLBACK(on_tray_quit_activate), NULL);
-
-  gtk_menu_shell_append(GTK_MENU_SHELL(tray_menu), tray_show);
+  gtk_menu_shell_append(GTK_MENU_SHELL(tray_menu), tray_front);
+  gtk_menu_shell_append(GTK_MENU_SHELL(tray_menu), tray_toggle);
   gtk_menu_shell_append(GTK_MENU_SHELL(tray_menu), tray_add);
   gtk_menu_shell_append(GTK_MENU_SHELL(tray_menu), tray_quit);
 
@@ -224,7 +241,7 @@ int main(int argc, char **argv) {
   show_all_tags_in_list();
   select_tag_in_list(TAG_ALL);
   enable_hotkeys();
-  gtk_widget_show(GTK_WIDGET(window));
+  gtk_window_present(window);
   gtk_main();
   delete_temp_dir();
 
@@ -236,20 +253,28 @@ gboolean on_main_window_key_press_event(
     GdkEventKey *event) {
   // hide the window on ctrl-w
   if ((event->keyval == 'w') && (event->state & GDK_CONTROL_MASK)) {
-    gtk_widget_hide(GTK_WIDGET(window));
-    window_shown = FALSE;
+    hide_window();
   }
   return FALSE;
 }
 
+void hide_window() {
+  gtk_menu_item_set_label(GTK_MENU_ITEM(tray_toggle), "Show");
+  gtk_widget_set_sensitive(GTK_WIDGET(tray_front), FALSE);
+  gtk_widget_hide(GTK_WIDGET(window));
+}
+
+void show_window() {
+  gtk_menu_item_set_label(GTK_MENU_ITEM(tray_toggle), "Hide");
+  gtk_widget_set_sensitive(GTK_WIDGET(tray_front), TRUE);
+  gtk_window_present(window);
+}
+
 void on_tray_icon_activate() {
-  if (window_shown) {
-    gtk_widget_hide(GTK_WIDGET(window));
-    window_shown = FALSE;
+  if (gtk_widget_get_visible(GTK_WIDGET(window))) {
+    hide_window();
   } else {
-    gtk_widget_show(GTK_WIDGET(window));
-    gtk_window_deiconify(window);
-    window_shown = TRUE;
+    show_window();
   }
 }
 
@@ -269,10 +294,12 @@ void on_tray_quit_activate() {
   gtk_main_quit();
 }
 
-void on_tray_show_activate() {
-  gtk_widget_show(GTK_WIDGET(window));
-  gtk_window_deiconify(window);
-  window_shown = TRUE;
+void on_tray_front_activate() {
+  gtk_window_present(window);
+}
+
+void on_tray_toggle_activate() {
+  on_tray_icon_activate();
 }
 
 void on_tray_add_activate() {
@@ -811,8 +838,7 @@ void clear_search() {
 
 gboolean on_main_window_delete_event() {
   // prevent window destruction
-  gtk_widget_hide(GTK_WIDGET(window));
-  window_shown = FALSE;
+  hide_window();
   return TRUE;
 }
 

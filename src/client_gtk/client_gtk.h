@@ -53,6 +53,8 @@ gboolean on_text_view_motion_notify_event(GtkWidget*, GdkEventMotion*);
 gboolean on_main_window_key_press_event(GtkWidget*, GdkEventKey*);
 }
 
+void        hide_window();
+void        show_window();
 void        done_editing(GPid, gint, gpointer);
 void        append_note_to_list(const rubix::note&);
 void        append_tag_to_list(const std::string&);
@@ -72,7 +74,8 @@ void        on_tag_selection_changed(GtkTreeSelection*);
 void        on_note_select_previous();
 void        on_note_select_next();
 void        on_tray_quit_activate();
-void        on_tray_show_activate();
+void        on_tray_front_activate();
+void        on_tray_toggle_activate();
 void        on_tray_add_activate();
 void        on_tray_icon_activate();
 void        on_tray_icon_popup_menu(GtkStatusIcon*, guint, guint);

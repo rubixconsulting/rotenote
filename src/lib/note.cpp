@@ -285,7 +285,7 @@ string note::_token(const std::string& str,
 
   if (test.empty()) {
     *iter = str.size();
-    return false;
+    return "";
   } else if (test.size() == 1) {
     *iter = str.size();
     return test;
